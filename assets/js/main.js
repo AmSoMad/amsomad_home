@@ -162,7 +162,6 @@ selectedFeatures.on(["add", "remove"], function () {
     return feature.get("url");
   });
   if (names.length > 0) {
-    //infoBox.innerHTML = names.join(', ');
     infoBox.innerHTML = names.length;
   } else {
     infoBox.innerHTML = "None";
@@ -170,21 +169,8 @@ selectedFeatures.on(["add", "remove"], function () {
 });
 
 dragBox.on("select", function (e) {
-  console.log("dragBox 선택된내용");
-  console.log(e.target.getFeatures());
-  var p_5174 = proj4("EPSG:3857", "EPSG:5174", [
-    evt.coordinate[0],
-    evt.coordinate[1],
-  ]);
+
   
-  // document.getElementById('status').innerHTML =
-  //   '&nbsp;' +
-  //   e.target.getFeatures().getLength() +
-  //   ' selected features (last operation selected ' +
-  //   e.selected.length +
-  //   ' and deselected ' +
-  //   e.deselected.length +
-  //   ' features)';
 });
 
 /**
@@ -207,8 +193,7 @@ $(function () {
 
   $("#dropzone input").on("change", function (e) {
     var file = this.files[0];
-    console.log("input 된 파일");
-    console.log(file);
+
 
     $("#dropzone").removeClass("hover");
 
@@ -324,17 +309,13 @@ function createZipFile(){
   var addr = $("#bunji_address").val();
   var zip = new JSZip();
   var zipFolder = zip.folder(addr);
-  console.log(zipFolder);
   
   for(var i = 0; i < selectedFeatures.R.length; i++){
     var fileName = selectedFeatures.R[i].A.url
     zipFolder.file(fileName, srch_file_Data(fileName));
-    console.log(fileName);
-    
   }
 
   zip.generateAsync({ type: "blob" }).then(function (blob) {
-    console.log(blob);
     saveAs(blob, String(addr));
   });
 }
@@ -368,7 +349,6 @@ function srch_file_Data(param_FileName){
  */
 function srch_addr(address) {
   //주소
-  console.log(address);
   var param = {
     address: address,
     accessToken: $("input[name=SGIS_AccessToken]").val(),
@@ -387,13 +367,12 @@ function srch_addr(address) {
         Number(coordinate_x),
         Number(coordinate_y),
       ]);
-      console.log(point);
+
       var p_3857 = proj4("EPSG:5179", "EPSG:3857", [
         point.flatCoordinates[0],
         point.flatCoordinates[1],
       ]);
 
-      console.log(p_3857);
       flyTo(p_3857, function () {});
     },
   });
@@ -516,7 +495,6 @@ function attach_file_list() {
               </thead>`;
   var files = $("#dropfile_input")[0].files;
   var filesArr = Array.prototype.slice.call(files);
-  console.log(filesArr);
   filesArr.forEach(function (currentValue, index, array) {
     html += "<tr>";
     html += "<td>" + filesArr[index].name + "</td>";

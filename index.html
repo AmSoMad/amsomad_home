@@ -39,7 +39,7 @@
 
 
 </head>
-<body >
+<body>
   <a href="https://github.com/Viglino/ol-ext" class="icss-github-corner"><i></i></a>
 
   <a class="title" href="/">
@@ -76,10 +76,12 @@
   </div>
   <div class="info">
     <div>Selected : <span id="info">None</span></div>
-    <button class="draw" onclick="select_download_zip()"><i class="fa fa-download"></i> 선택된사진 다운로드</button>
+    <button class="draw" style="cursor:pointer;" onclick="select_download_zip()"><i class="fa fa-download"></i> 선택된사진 다운로드</button>
     <!-- <button class="draw" onclick="download()"><i class="fa fa-download"></i> geojson download</button> -->
   </div>
-  
+  <div class="boxLoading" style="display:none;">
+
+  </div>
 
   <!-- main.js -->
   <script type="text/javascript" src="assets/js/main.js"></script>
