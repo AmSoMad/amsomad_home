@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AmSo Mad</title>
+  <link rel="shortcut icon" href="assets/img/favicon.ico">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+  <!-- jQuery -->
+  <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.0.min.js"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+  <!-- ol3 to show the map -->
+  <link rel="stylesheet" href="assets/css/ol.css" />
+  <script type="text/javascript" src="assets/build/ol.js"></script>
+  <script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=requestAnimationFrame,Element.prototype.classList,URL,Object.assign"></script>
+  <script src="https://cdn.polyfill.io/v3/polyfill.min.js?features=fetch,requestAnimationFrame,Element.prototype.classList,TextDecoder"></script>
+  
+  <!-- filesaver-js -->
+  <script type="text/javascript" src="assets/build/FileSaver.js"></script>
+  <!-- exif-JS -->
+  <script type="text/javascript" src="assets/build/exif.js"></script>
+  <!-- ol-ext -->
+  <link rel="stylesheet" href="assets/build/ol-ext.css" />
+  <script type="text/javascript" src="assets/build/ol-ext.js"></script>
+  <!-- proj4.js -->
+  <script type="text/javascript" src="assets/build/proj4-src.js"></script>
+  <!-- ZIP -->
+  <script type="text/javascript" src="assets/build/jszip.js"></script>
+  <!-- Pointer events polyfill for old browsers, see https://caniuse.com/#feat=pointer -->
+  <script src="https://unpkg.com/elm-pep"></script>
+  <!-- exif2geojson -->
+  <script type="text/javascript" src="assets/build/extra/Exif2Geojson.js"></script>
+  <!-- main Css -->
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <!-- custom Css -->
+  <link rel="stylesheet" href="assets/css/custom.css" />
+
+
+
+</head>
+<body >
+  <a href="https://github.com/Viglino/ol-ext" class="icss-github-corner"><i></i></a>
+
+  <a class="title" href="/">
+    <h1><i class="fa fa-picture-o"></i> AmSo Mad</h1>
+  </a>
+
+  <div class="info">
+    사진에 포함된 메타데이터(EXIF)의 GPS정보 변환하여 지도에 point를 찍는다. <br/>
+    <i><b style="color: #35e888;">Ctrl + 마우스클릭</b></i>으로 정리할 범위의 사진을 Box형태로 선택을 한다.<br/>
+    해당 사진을 JSZIP을 통하여 선택된 위치의 사진만 재압축하여 FileSaver.js 로 다운로드한다.
+    <br/>
+  </div>
+  <br>
+  <!-- <div id="dropfile">
+    Drag & drop images
+  </div> -->
+  <div id="dropzone">
+    <div>dropzone <span id="filecnt">None</span></div>
+    <input type="file" id="dropfile_input" accept="image/png, image/jpg, image/jpeg, image/bmp" multiple />
+  </div>
+  <div class="" style="display: none;">
+    <input type="file" name="select_file" id="select_file" class="">
+    <input type="hidden" name="SGIS_AccessToken" value="">
+		<input type="hidden" name="road_address" value="">
+		<input type="hidden" id="bunji_address" name="bunji_address" value="">
+    <input type="text" name="address" value="">
+  </div>
+  <div class="info">
+
+    <div class="loading"></div>
+    <div id="map"></div>
+    <textarea id="result" class="hide" style="display: none;"></textarea>
+    <div id="attach_file_list"></div>
+  </div>
+  <div class="info">
+    <div>Selected : <span id="info">None</span></div>
+    <button class="draw" onclick="select_download_zip()"><i class="fa fa-download"></i> 선택된사진 다운로드</button>
+    <!-- <button class="draw" onclick="download()"><i class="fa fa-download"></i> geojson download</button> -->
+  </div>
+  
+
+  <!-- main.js -->
+  <script type="text/javascript" src="assets/js/main.js"></script>
+</body>
+</html>
