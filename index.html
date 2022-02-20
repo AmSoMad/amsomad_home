@@ -1,92 +1,326 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <title>AmSo Mad</title>
-  <link rel="shortcut icon" href="assets/img/favicon.ico">
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-  <!-- jQuery -->
-  <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.0.min.js"></script>
-  <!-- FontAwesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <title>AmsoMad</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
 
-  <!-- ol3 to show the map -->
-  <link rel="stylesheet" href="assets/css/ol.css" />
-  <script type="text/javascript" src="assets/build/ol.js"></script>
-  <script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=requestAnimationFrame,Element.prototype.classList,URL,Object.assign"></script>
-  <script src="https://cdn.polyfill.io/v3/polyfill.min.js?features=fetch,requestAnimationFrame,Element.prototype.classList,TextDecoder"></script>
-  
-  <!-- filesaver-js -->
-  <script type="text/javascript" src="assets/build/FileSaver.js"></script>
-  <!-- exif-JS -->
-  <script type="text/javascript" src="assets/build/exif.js"></script>
-  <!-- ol-ext -->
-  <link rel="stylesheet" href="assets/build/ol-ext.css" />
-  <script type="text/javascript" src="assets/build/ol-ext.js"></script>
-  <!-- proj4.js -->
-  <script type="text/javascript" src="assets/build/proj4-src.js"></script>
-  <!-- ZIP -->
-  <script type="text/javascript" src="assets/build/jszip.js"></script>
-  <!-- Pointer events polyfill for old browsers, see https://caniuse.com/#feat=pointer -->
-  <script src="https://unpkg.com/elm-pep"></script>
-  <!-- exif2geojson -->
-  <script type="text/javascript" src="assets/build/extra/Exif2Geojson.js"></script>
-  <!-- main Css -->
-  <link rel="stylesheet" href="assets/css/style.css" />
-  <!-- custom Css -->
-  <link rel="stylesheet" href="assets/css/custom.css" />
+  <!-- Favicons -->
+  <link href="assets/img/favicon.ico" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
 
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Raleway:300,300i,400,400i,500,500i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
 
+  <!-- Vendor CSS Files -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
+  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
 
+  <!-- Template Main CSS File -->
+  <link href="assets/css/style.css" rel="stylesheet">
+
+  <!-- =======================================================
+  * Template Name: Personal - v4.7.0
+  * Template URL: https://bootstrapmade.com/personal-free-resume-bootstrap-template/
+  * Author: BootstrapMade.com
+  * License: https://bootstrapmade.com/license/
+  ======================================================== -->
 </head>
+
 <body>
-  <a href="https://github.com/Viglino/ol-ext" class="icss-github-corner"><i></i></a>
 
-  <a class="title" href="/">
-    <h1><i class="fa fa-picture-o"></i> AmSo Mad</h1>
-  </a>
+  <!-- ======= Header ======= -->
+  <header id="header">
+    <div class="container">
 
-  <div class="info">
-    <b style="color: #f45e61;">아직 GPS정보가 없는 사진은 미포함되는 기능은 미적용상태</b>
-    <br>
-    <br>
-    사진에 포함된 메타데이터(EXIF)의 GPS정보 변환하여 지도에 point를 찍는다. <br/>
-    <i><b style="color: #35e888;">Ctrl + 마우스클릭</b></i>으로 정리할 범위의 사진을 Box형태로 선택을 한다.<br/>
-    해당 사진을 JSZIP을 통하여 선택된 위치의 사진만 재압축하여 FileSaver.js 로 다운로드한다.
-    <br/>
-  </div>
-  <br>
-  <!-- <div id="dropfile">
-    Drag & drop images
-  </div> -->
-  <div id="dropzone">
-    <div>dropzone <span id="filecnt">None</span></div>
-    <input type="file" id="dropfile_input" accept="image/png, image/jpg, image/jpeg, image/bmp" multiple />
-  </div>
-  <div class="" style="display: none;">
-    <input type="file" name="select_file" id="select_file" class="">
-    <input type="hidden" name="SGIS_AccessToken" value="">
-		<input type="hidden" name="road_address" value="">
-		<input type="hidden" id="bunji_address" name="bunji_address" value="">
-    <input type="text" name="address" value="">
-  </div>
-  <div class="info">
+      <h1><a href="index.html">Amso Mad</a></h1><h5>ver 0.1.4</h5>
+      <h2>난 결코 <span>늦지않은</span> 사람이다.</h2>
 
-    <div class="loading"></div>
-    <div id="map"></div>
-    <textarea id="result" class="hide" style="display: none;"></textarea>
-    <div id="attach_file_list"></div>
-  </div>
-  <div class="info">
-    <div>Selected : <span id="info">None</span></div>
-    <button class="draw" style="cursor:pointer;" onclick="select_download_zip()"><i class="fa fa-download"></i> 선택된사진 다운로드</button>
-    <!-- <button class="draw" onclick="download()"><i class="fa fa-download"></i> geojson download</button> -->
-  </div>
-  <div class="boxLoading" style="display:none;">
+      <nav id="navbar" class="navbar">
+        <ul>
+          <li><a class="nav-link active" href="#header">Home</a></li>
+          <li><a class="nav-link" href="#about">About</a></li>
+          <!-- <li><a class="nav-link" href="#resume">Resume</a></li> -->
+          <!-- <li><a class="nav-link" href="#services">Services</a></li> -->
+          <li><a class="nav-link" href="#portfolio">Portfolio</a></li>
+          <!-- <li><a class="nav-link" href="#contact">Contact</a></li> -->
+        </ul>
+        <i class="bi bi-list mobile-nav-toggle"></i>
+      </nav><!-- .navbar -->
 
+      <div class="social-links">
+        <!-- <a href="#" class="twitter"><i class="bi bi-twitter"></i></a> -->
+        <!-- <a href="#" class="facebook"><i class="bi bi-facebook"></i></a> -->
+        <a href="#" class="instagram"><i class="bi bi-instagram"></i></a>
+        <!-- <a href="#" class="linkedin"><i class="bi bi-linkedin"></i></a> -->
+        <a href="https://github.com/AmSoMad" class="github"><i class="bi bi-github"></i></a>
+        
+      </div>
+
+    </div>
+  </header><!-- End Header -->
+
+  <!-- ======= About Section ======= -->
+  <section id="about" class="about">
+
+    <!-- ======= About Me ======= -->
+    <div class="about-me container">
+
+      <div class="section-title">
+        <h2>About</h2>
+        <p>Learn more about me</p>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-4" data-aos="fade-right">
+          <img src="assets/img/me01.jpg" class="img-fluid" alt="">
+          <!-- <img src="assets/img/me02.jpg" class="img-thumbnail" alt=""> -->
+        </div>
+        <div class="col-lg-8 pt-4 pt-lg-0 content" data-aos="fade-left">
+          <h3>Web &amp; GIS Junior Developer</h3>
+          <p class="fst-italic">
+            하나하나 배워가면서 내 부족함을 채워넣는데 너무 즐겁다. 
+          </p>
+          <div class="row">
+            <div class="col-lg-6">
+              <ul>
+                <li><i class="bi bi-chevron-right"></i> <strong>Birthday:</strong> <span>8 Nov. 1991</span></li>
+                <li><i class="bi bi-chevron-right"></i> <strong>Tech Blog :</strong> <span><a href="http://amsomad.github.io">amsomad.github.io</a></span></li>
+                <li><i class="bi bi-chevron-right"></i> <strong>Phone:</strong> <span>+82-10 9496 7818</span></li>
+                <li><i class="bi bi-chevron-right"></i> <strong>City:</strong> <span>Yongin-si, Gyeonggi-do, Republic of Korea</span></li>
+              </ul>
+            </div>
+            <div class="col-lg-6">
+              <ul>
+                <li><i class="bi bi-chevron-right"></i> <strong>Age:</strong> <span>32</span></li>
+                <li><i class="bi bi-chevron-right"></i> <strong>Gender:</strong> <span>Male</span></li>
+                <li><i class="bi bi-chevron-right"></i> <strong>Email:</strong> <span>lsun000@naver.com</span></li>
+                <li><i class="bi bi-chevron-right"></i> <strong>Main task:</strong> <span>Web &amp; GIS</span></li>
+              </ul>
+            </div>
+          </div>
+          <p>
+            슬기롭지 않은 자는 충고와 조언을 듣지 않고 따르지 않으며 매너리즘에 빠진 자들이라 생각합니다. <br>
+            그것을 아는 사람은 그러한 행동을 안 하려 하지요. 또한 나 자신에게도 찾아오더라도 금방 헤쳐나갑니다. <br>
+            저는 그런 사람, 그러지 않게 도와주는 사람입니다.<br>
+            누구에게나 장단점은 존재합니다. <br>
+            상대방에게 나 자신의 의도와 행동 또는 누군가에게 이해를 잘 시키는 사람입니다. <br>
+            그것에 따른 단점으로 말이 많은 편이 되었고요. <br>
+            동료들의 말을 유심히 잘 새겨듣는 사람입니다. <br>
+            그것에 따른 단점으로 간혹 나 자신의 생각에 의구심을 들 때가 있습니다. <br>
+            싫어하는 소리를 잘 하지 않는 사람입니다. <br>
+            그렇기에 내가 조금 더 힘을 내면 된다는 생각에 혼자 해결해왔습니다. <br>
+            저는. 이러한 사람입니다. <i class="bi bi-emoji-wink"></i>
+          </p>
+        </div>
+      </div>
+
+    </div><!-- End About Me -->
+
+  </section><!-- End About Section -->
+
+  <!-- ======= Resume Section ======= -->
+  <section id="resume" class="resume">
+    <div class="container">
+
+      <div class="section-title">
+        <h2>Resume</h2>
+        <p>Check My Resume</p>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-6">
+          <h3 class="resume-title">Sumary</h3>
+          <div class="resume-item pb-0">
+            <h4>Alice Barkley</h4>
+            <p><em>Innovative and deadline-driven Graphic Designer with 3+ years of experience designing and developing user-centered digital/print marketing material from initial concept to final, polished deliverable.</em></p>
+            <p>
+            <ul>
+              <li>Portland par 127,Orlando, FL</li>
+              <li>(123) 456-7891</li>
+              <li>alice.barkley@example.com</li>
+            </ul>
+            </p>
+          </div>
+
+          <h3 class="resume-title">Education</h3>
+          <div class="resume-item">
+            <h4>Master of Fine Arts &amp; Graphic Design</h4>
+            <h5>2015 - 2016</h5>
+            <p><em>Rochester Institute of Technology, Rochester, NY</em></p>
+            <p>Qui deserunt veniam. Et sed aliquam labore tempore sed quisquam iusto autem sit. Ea vero voluptatum qui ut dignissimos deleniti nerada porti sand markend</p>
+          </div>
+          <div class="resume-item">
+            <h4>Bachelor of Fine Arts &amp; Graphic Design</h4>
+            <h5>2010 - 2014</h5>
+            <p><em>Rochester Institute of Technology, Rochester, NY</em></p>
+            <p>Quia nobis sequi est occaecati aut. Repudiandae et iusto quae reiciendis et quis Eius vel ratione eius unde vitae rerum voluptates asperiores voluptatem Earum molestiae consequatur neque etlon sader mart dila</p>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <h3 class="resume-title">Professional Experience</h3>
+          <div class="resume-item">
+            <h4>Senior graphic design specialist</h4>
+            <h5>2019 - Present</h5>
+            <p><em>Experion, New York, NY </em></p>
+            <p>
+            <ul>
+              <li>Lead in the design, development, and implementation of the graphic, layout, and production communication materials</li>
+              <li>Delegate tasks to the 7 members of the design team and provide counsel on all aspects of the project. </li>
+              <li>Supervise the assessment of all graphic materials in order to ensure quality and accuracy of the design</li>
+              <li>Oversee the efficient use of production project budgets ranging from $2,000 - $25,000</li>
+            </ul>
+            </p>
+          </div>
+          <div class="resume-item">
+            <h4>Graphic design specialist</h4>
+            <h5>2017 - 2018</h5>
+            <p><em>Stepping Stone Advertising, New York, NY</em></p>
+            <p>
+            <ul>
+              <li>Developed numerous marketing programs (logos, brochures,infographics, presentations, and advertisements).</li>
+              <li>Managed up to 5 projects or tasks at a given time while under pressure</li>
+              <li>Recommended and consulted with clients on the most appropriate graphic design</li>
+              <li>Created 4+ design presentations and proposals a month for clients and account managers</li>
+            </ul>
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section><!-- End Resume Section -->
+
+  <!-- ======= Portfolio Section ======= -->
+  <section id="portfolio" class="portfolio">
+    <div class="container">
+
+      <div class="section-title">
+        <h2>Portfolio</h2>
+        <p>My Works</p>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-12 d-flex justify-content-center">
+          <ul id="portfolio-flters">
+            <li data-filter="*" class="filter-active">All</li>
+            <li data-filter=".filter-app">App</li>
+            <li data-filter=".filter-card">Card</li>
+            <li data-filter=".filter-web">Web</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="row portfolio-container">
+
+        <div class="col-lg-4 col-md-6 portfolio-item filter-web">
+          <div class="portfolio-wrap">
+            <img src="assets/img/portfolio/portfolio-01.jpg" class="img-fluid" alt="">
+            <div class="portfolio-info">
+              <h4>MakeUP 2 Img</h4>
+              <p>사진 위치별로 정리</p>
+              <div class="portfolio-links">
+                <a href="assets/img/portfolio/portfolio-01.jpg" data-gallery="portfolioGallery" class="portfolio-lightbox" title="MakeUP 2 Img"><i class="bx bx-plus"></i></a>
+                <!-- <a href="portfolio-details.html" data-gallery="portfolioDetailsGallery" data-glightbox="type: external" class="portfolio-details-lightbox" title="Portfolio Details"><i class="bx bx-link"></i></a> -->
+                <a href="./gis/makeupimg.html" data-gallery="portfolioDetailsGallery" data-glightbox="type: external" class="portfolio-details-lightbox" title="Portfolio Details"><i class="bx bx-link"></i></a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter-web -->
+        <div class="col-lg-4 col-md-6 portfolio-item filter-web">
+          <div class="portfolio-wrap">
+            <img src="assets/img/portfolio/portfolio-02.jpg" class="img-fluid" alt="">
+            <div class="portfolio-info">
+              <h4>지역 분석지도</h4>
+              <p>스타트업</p>
+              <div class="portfolio-links">
+                <a href="assets/img/portfolio/portfolio-02.jpg" data-gallery="portfolioGallery" class="portfolio-lightbox" title="Web 2"><i class="bx bx-plus"></i></a>
+                <a href="./gis/analysisMap.html" data-gallery="portfolioDetailsGallery" data-glightbox="type: external" class="portfolio-details-lightbox" title="Portfolio Details"><i class="bx bx-link"></i></a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter-app -->
+        <!-- <div class="col-lg-4 col-md-6 portfolio-item filter-app">
+          <div class="portfolio-wrap">
+            <img src="assets/img/portfolio/portfolio-3.jpg" class="img-fluid" alt="">
+            <div class="portfolio-info">
+              <h4>App 2</h4>
+              <p>App</p>
+              <div class="portfolio-links">
+                <a href="assets/img/portfolio/portfolio-3.jpg" data-gallery="portfolioGallery" class="portfolio-lightbox" title="App 2"><i class="bx bx-plus"></i></a>
+                <a href="portfolio-details.html" data-gallery="portfolioDetailsGallery" data-glightbox="type: external" class="portfolio-details-lightbox" title="Portfolio Details"><i class="bx bx-link"></i></a>
+              </div>
+            </div>
+          </div>
+        </div> -->
+
+        <!-- Filter-card -->
+        <!-- <div class="col-lg-4 col-md-6 portfolio-item filter-card">
+          <div class="portfolio-wrap">
+            <img src="assets/img/portfolio/portfolio-4.jpg" class="img-fluid" alt="">
+            <div class="portfolio-info">
+              <h4>Card 2</h4>
+              <p>Card</p>
+              <div class="portfolio-links">
+                <a href="assets/img/portfolio/portfolio-4.jpg" data-gallery="portfolioGallery" class="portfolio-lightbox" title="Card 2"><i class="bx bx-plus"></i></a>
+                <a href="portfolio-details.html" data-gallery="portfolioDetailsGallery" data-glightbox="type: external" class="portfolio-details-lightbox" title="Portfolio Details"><i class="bx bx-link"></i></a>
+              </div>
+            </div>
+          </div>
+        </div> -->
+        
+        <!-- Filter-web -->
+        <!-- <div class="col-lg-4 col-md-6 portfolio-item filter-web">
+          <div class="portfolio-wrap">
+            <img src="assets/img/portfolio/portfolio-5.jpg" class="img-fluid" alt="">
+            <div class="portfolio-info">
+              <h4>Web 2</h4>
+              <p>Web</p>
+              <div class="portfolio-links">
+                <a href="assets/img/portfolio/portfolio-5.jpg" data-gallery="portfolioGallery" class="portfolio-lightbox" title="Web 2"><i class="bx bx-plus"></i></a>
+                <a href="portfolio-details.html" data-gallery="portfolioDetailsGallery" data-glightbox="type: external" class="portfolio-details-lightbox" title="Portfolio Details"><i class="bx bx-link"></i></a>
+              </div>
+            </div>
+          </div>
+        </div> -->
+
+      </div>
+
+    </div>
+  </section><!-- End Portfolio Section -->
+
+  <div class="credits">
+    <!-- All the links in the footer should remain intact. -->
+    <!-- You can delete the links only if you purchased the pro version. -->
+    <!-- Licensing information: https://bootstrapmade.com/license/ -->
+    <!-- Purchase the pro version with working PHP/AJAX contact form: https://bootstrapmade.com/personal-free-resume-bootstrap-template/ -->
+    Designed by <a href="https://bootstrapmade.com/">BootstrapMade</a>
   </div>
 
-  <!-- main.js -->
-  <script type="text/javascript" src="assets/js/main.js"></script>
+  <!-- Vendor JS Files -->
+  <script src="assets/vendor/purecounter/purecounter.js"></script>
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="assets/vendor/waypoints/noframework.waypoints.js"></script>
+  <script src="assets/vendor/php-email-form/validate.js"></script>
+
+  <!-- Template Main JS File -->
+  <script src="assets/js/main.js"></script>
+
 </body>
+
 </html>
