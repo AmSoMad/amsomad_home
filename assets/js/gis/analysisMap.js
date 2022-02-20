@@ -319,7 +319,7 @@ var map = new ol.Map({
   ],
   view: olView,
   interactions: ol.interaction.defaults({ altShiftDragRotate:true, pinchRotate:true }),
-  overlay : overlay,
+  overlays : [overlay],
   controls: ol.control.defaults().extend(
   [
       //new ol.control.FullScreen({source:'fullscreen',}),
@@ -456,8 +456,8 @@ $.ajax({
 * 참고사항 : SGIS api 활용 단 주소가 옛날 체계를 사용함(법정동도 껴있음)
 */
 function Reverse_GeoCodding(loc_x, loc_y, addr_type){
-console.log(loc_x);
-console.log(loc_y);
+// console.log(loc_x);
+// console.log(loc_y);
 
 //도로명주소
 var param = {
@@ -490,7 +490,7 @@ return new Promise((resolve, reject) => {
     data: param,
     dataType: 'json',
     success: function (data) {
-      console.log(data);
+      //console.log(data);
       if (data.errMsg == 'Success') {
         if (data.result[0].hasOwnProperty('emdong_nm')) {
           $("input[name=bunji_address]").val(data.result[0].full_addr);
@@ -736,21 +736,21 @@ map.getLayers().forEach(function(layer){
             map.addLayer(vector_layer);
             
             let resultFeature = vectorSource.getFeatures()[0]
-            if(typeof resultFeature == "object"){
-                let wfs_html="";
-                for(let i in resultFeature.getKeys()){ 
-                if(resultFeature.getKeys()[i] == "bbox"){
-                    continue;
+            if (typeof resultFeature == "object") {
+                let wfs_html = "";
+                for (let i in resultFeature.getKeys()) {
+                    if (resultFeature.getKeys()[i] == "bbox") {
+                        continue;
+                    }
+                    wfs_html += resultFeature.getKeys()[i] + " = " + resultFeature.get(resultFeature.getKeys()[i]) + "\n<br>";
                 }
-                    wfs_html += resultFeature.getKeys()[i] + " = "+resultFeature.get(resultFeature.getKeys()[i])+"\n<br>";
-                }
-                    wfs_html += "--------------------------------------<br>";
-                    $('#wfs_result').html(wfs_html);
-                    //alert(wfs_html);
-                  const coordinate = evt.coordinate;
-                  //const hdms = toStringHDMS(toLonLat(coordinate));
-                  content.innerHTML = '<p>선택한 레이어정보 : </p><code>' + wfs_html + '</code><br>';
-                  overlay.setPosition(coordinate);
+                wfs_html += "--------------------------------------<br>";
+                $('#wfs_result').html(wfs_html);
+                //alert(wfs_html);
+                const coordinate = evt.coordinate;
+                //const hdms = toStringHDMS(toLonLat(coordinate));
+                content.innerHTML = '<p>선택한 레이어정보 : </p><code>' + wfs_html + '</code><br>';
+                overlay.setPosition(coordinate);
             }
         },
         error: function(xhr, stat, err) {}
@@ -859,29 +859,29 @@ var feature = map.forEachFeatureAtPixel(evt.pixel,
 
 vworld_wfs(evt);
 
-if (feature) {
-    var coordinates = feature.getGeometry().getCoordinates();
-    // https://www.hasudoinfo.or.kr/stat/selectPlant.do
-    // bscFctCd: 26290PB001R  //26290 시군구코드 발송하고 PB001R붙이면됌
-    var param = {
-        ADDR_1: "부산광역시 남구 용호동 12",
-        BSC_FCT_CLS_NM: "공공하수처리시설",
-        BSC_FCT_NM: "남부",
-        FCT_CPC: 340000,
-        GUGUN: "남구",
-        SIDO: "부산광역시",
-        SIT_AREA: 123399,
-        TEL: "051-713-0133",
-        TRT_DSTR_AREA: 4269,
-        TRT_END_HAN_NM: null,
-        TRT_FRF_HAN_NM: "MBR, MLE",
-        TRT_MOC_HAN_NM: "막 계열, A2O 계열",
-        
+    if (feature) {
+        var coordinates = feature.getGeometry().getCoordinates();
+        // https://www.hasudoinfo.or.kr/stat/selectPlant.do
+        // bscFctCd: 26290PB001R  //26290 시군구코드 발송하고 PB001R붙이면됌
+        var param = {
+            ADDR_1: "부산광역시 남구 용호동 12",
+            BSC_FCT_CLS_NM: "공공하수처리시설",
+            BSC_FCT_NM: "남부",
+            FCT_CPC: 340000,
+            GUGUN: "남구",
+            SIDO: "부산광역시",
+            SIT_AREA: 123399,
+            TEL: "051-713-0133",
+            TRT_DSTR_AREA: 4269,
+            TRT_END_HAN_NM: null,
+            TRT_FRF_HAN_NM: "MBR, MLE",
+            TRT_MOC_HAN_NM: "막 계열, A2O 계열",
+
+        }
+        console.log(feature);
+    } else {
+        console.log(feature);
     }
-    console.log(feature);
-} else {
-console.log(feature);
-}
 
 var p_5179 = proj4('EPSG:3857','EPSG:5179',[evt.coordinate[0],evt.coordinate[1]]);
 var p_5174 = proj4('EPSG:3857','EPSG:5174',[evt.coordinate[0],evt.coordinate[1]]);
@@ -890,11 +890,11 @@ var p_4326 = proj4('EPSG:3857','EPSG:4326',[evt.coordinate[0],evt.coordinate[1]]
 
 Dist_Info(p_5174[0],p_5174[1],p_5179);
 
-console.log('3857 : ' + evt.coordinate[0],evt.coordinate[1]);
-console.log('4326 : ' + p_4326);
-console.log('5179 : ' + p_5179);
-console.log('5174 : ' + p_5174);
-console.log('5181 : ' + p_5181);
+// console.log('3857 : ' + evt.coordinate[0],evt.coordinate[1]);
+// console.log('4326 : ' + p_4326);
+// console.log('5179 : ' + p_5179);
+// console.log('5174 : ' + p_5174);
+// console.log('5181 : ' + p_5181);
 //openapiTest6_WFS();
 //Select_bld_cad(p_5174[1],p_5174[0],$("input[name=sido_nm]").val());
 //Select_bld_info(p_5174[1],p_5174[0]);
