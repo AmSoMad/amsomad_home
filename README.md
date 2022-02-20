@@ -26,3 +26,6 @@
 > version 0.1.4 <br>
 > [page] analysisMap bug fix <br>
 
+> version 0.1.5 <br>
+> [page] analysisMap polygon WFS data fix<br>
+
