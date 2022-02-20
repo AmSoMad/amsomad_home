@@ -29,3 +29,7 @@
 > version 0.1.5 <br>
 > [page] analysisMap polygon WFS data fix<br>
 
+> version 0.1.6 <br>
+> index.html logo, blog link add <br>
+> portfolio add
+
