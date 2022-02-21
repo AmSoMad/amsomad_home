@@ -36,3 +36,5 @@
 > version 0.1.7 <br>
 > portfolio CSS-Home-Solution add
 
+> version 0.1.8 <br>
+> [page] index.html link add <br>
