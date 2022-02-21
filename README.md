@@ -30,6 +30,9 @@
 > [page] analysisMap polygon WFS data fix<br>
 
 > version 0.1.6 <br>
-> index.html logo, blog link add <br>
-> portfolio add
+> [page] index.html logo, blog link add <br>
+> portfolio sj-proj add
+
+> version 0.1.7 <br>
+> portfolio CSS-Home-Solution add
 
