@@ -4,6 +4,12 @@
 
 #
 
+```js
+계속 되는 문제
+[page] makeupimg : jszip.js 를 사용하고있으나. 압축속도가 너무느리다.
+대안으로는 UZIP.js , fflate, zip.js 가있긴하나...
+```
+
 > version 0.1.0 <br>
 > Templates Publishing.
 
@@ -38,3 +44,8 @@
 
 > version 0.1.8 <br>
 > [page] index.html link add <br>
+
+> version 0.1.9 <br>
+> [page] makeupimg Progress % add <br>
+> [page] makeupimg ctrl + drag error fix<br> 
+>> features 유무 조건 추가

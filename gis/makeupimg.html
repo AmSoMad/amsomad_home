@@ -59,6 +59,10 @@
   <!-- <div id="dropfile">
     Drag & drop images
   </div> -->
+  <div>
+    <input type="checkbox" name="fileList_Yn" id="fileList_Yn_1" value="1" checked="checked">
+    <label class="" for="fileList_Yn_1"><b style="color: #35e888;">파일목록 미출력</b></label>
+  </div>
   <div id="dropzone">
     <div>dropzone <span id="filecnt">None</span></div>
     <input type="file" id="dropfile_input" accept="image/png, image/jpg, image/jpeg, image/bmp" multiple />
@@ -71,22 +75,26 @@
     <input type="text" name="address" value="">
   </div>
   <div class="info">
-
     <div class="loading"></div>
     <div id="map"></div>
+    <div class="loader-text" id="loader-text">Selected : <span id="info">None</span></div>
+    <div class="current-file" id="current-file"></div>
+    <button class="draw" style="cursor:pointer;" onclick="select_download_zip()"><i class="fa fa-download"></i> 선택된사진
+      압축 다운로드</button>
+    <button class="draw" style="cursor:pointer;" onclick="javascript:location.reload(true);"><i class="fa fa-repeat"></i>
+      페이지 새로고침</button>
+  
+    <!-- <button class="draw" style="cursor:pointer;" onclick="select_download_Folder()"><i class="fa fa-download"></i> 선택된사진
+        내컴퓨터에 저장복사</button> -->
+    <!-- <button class="draw" onclick="download()"><i class="fa fa-download"></i> geojson download</button> -->
+  
     <textarea id="result" class="hide" style="display: none;"></textarea>
     <div id="attach_file_list"></div>
   </div>
-  <div class="info">
-    <div>Selected : <span id="info">None</span></div>
-    <button class="draw" style="cursor:pointer;" onclick="select_download_zip()"><i class="fa fa-download"></i> 선택된사진
-      다운로드</button>
-    <!-- <button class="draw" onclick="download()"><i class="fa fa-download"></i> geojson download</button> -->
-  </div>
   <div class="boxLoading" style="display:none;">
-
   </div>
 </div>
+
   <!-- main.js -->
   <script type="text/javascript" src="../assets/js/gis/makeupimg.js"></script>
 </body>

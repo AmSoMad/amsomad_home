@@ -1,3 +1,5 @@
+let flag_downloaded = 1;
+
 function download() {
   var blob = new Blob([$("#result").val()], {
     type: "text/plain;charset=utf-8",
@@ -79,13 +81,14 @@ const selectedStyle = new ol.style.Style({
 });
 
 // a normal select interaction to handle click
-const select = new ol.interaction.Select({
-  style: function (feature) {
-    const color = feature.get("COLOR_BIO") || "#eeeeee";
-    selectedStyle.getFill().setColor(color);
-    return selectedStyle;
-  },
-});
+// const select = new ol.interaction.Select({
+//   style: function (feature) {
+//     const color = feature.get("COLOR_BIO") || "#eeeeee";
+//     selectedStyle.getFill().setColor(color);
+//     return selectedStyle;
+//   },
+// });
+const select = new ol.interaction.Select({});
 map.addInteraction(select);
 
 const selectedFeatures = select.getFeatures();
@@ -99,7 +102,7 @@ const dragBox = new ol.interaction.DragBox({
       width: 2,
     }),
     fill: new ol.style.Fill({
-      color: "rgba(0,0,255,0.6)",
+      color: "rgba(0,0,255,1)",
     }),
   }),
 });
@@ -125,29 +128,32 @@ map.addInteraction(selectClick);
 
 dragBox.on("boxend", function () {
   const extent = dragBox.getGeometry().getExtent();
-  const boxFeatures = global_Vector_Source
-    .getFeaturesInExtent(extent)
-    //.getExtent(extent)
-    .filter((feature) => feature.getGeometry().intersectsExtent(extent));
+  if (global_Vector_Source != null) {
+    const boxFeatures = global_Vector_Source
+      .getFeaturesInExtent(extent)
+      //.getExtent(extent)
+      .filter((feature) => feature.getGeometry().intersectsExtent(extent));
 
-  const rotation = map.getView().getRotation();
-  const oblique = rotation % (Math.PI / 2) !== 0;
+    const rotation = map.getView().getRotation();
+    const oblique = rotation % (Math.PI / 2) !== 0;
 
-  if (oblique) {
-    const anchor = [0, 0];
-    const geometry = dragBox.getGeometry().clone();
-    geometry.rotate(-rotation, anchor);
-    const extent = geometry.getExtent();
-    boxFeatures.forEach(function (feature) {
-      const geometry = feature.getGeometry().clone();
+    if (oblique) {
+      const anchor = [0, 0];
+      const geometry = dragBox.getGeometry().clone();
       geometry.rotate(-rotation, anchor);
-      if (geometry.intersectsExtent(extent)) {
-        selectedFeatures.push(feature);
-      }
-    });
-  } else {
-    selectedFeatures.extend(boxFeatures);
+      const extent = geometry.getExtent();
+      boxFeatures.forEach(function (feature) {
+        const geometry = feature.getGeometry().clone();
+        geometry.rotate(-rotation, anchor);
+        if (geometry.intersectsExtent(extent)) {
+          selectedFeatures.push(feature);
+        }
+      });
+    } else {
+      selectedFeatures.extend(boxFeatures);
+    }
   }
+
 
 });
 
@@ -259,7 +265,11 @@ function img_to_geojson(files) {
         name: "업로드사진",
         visible: true,
       });
-      attach_file_list();
+      
+      if($('input:checkbox[name="fileList_Yn"]').is(":checked") == false){
+        attach_file_list();
+      }
+      
       global_Vector_Source = vector;
       global_Vector_Layer = vectorLayer;
       map.addLayer(vectorLayer);
@@ -280,18 +290,16 @@ function select_download_zip() {
   // global_Vector_Source.getFeatures() 전체 레이어 객체
   // global_Vector_Source.getFeatures()[0].A.url 전체 레이어 파일명
   // selectedFeatures.R[0].A.url 선택된 레이어 파일명
+  flag_downloaded = 1;
   try {
     var corrdinates = selectedFeatures.R[0].A.geometry.flatCoordinates
-
     var p_5179 = proj4('EPSG:3857','EPSG:5179',[corrdinates[0],corrdinates[1]]);
 
     Reverse_GeoCodding(p_5179[0],p_5179[1]);
     
-
   } catch (error) {
     console.log(error);
     alert("선택하신 위치가 없습니다.");
-    
   }
 
 }
@@ -309,17 +317,38 @@ function createZipFile(){
   var addr = $("#bunji_address").val();
   var zip = new JSZip();
   var zipFolder = zip.folder(addr);
+  if(flag_downloaded == 1){
+    for(var i = 0; i < selectedFeatures.R.length; i++){
+      var fileName = selectedFeatures.R[i].A.url
+      zipFolder.file(fileName, srch_file_Data(fileName));
+    }
   
-  for(var i = 0; i < selectedFeatures.R.length; i++){
-    var fileName = selectedFeatures.R[i].A.url
-    zipFolder.file(fileName, srch_file_Data(fileName));
+    zip.generateAsync({ 
+      type: "blob",
+      compression: "STORE", //DEFLATE
+      // compressionOptions: {
+      //     level: 1
+      // }
+      streamFiles: false
+    }, function updateCallback(metadata){
+      console.log("progression: " + metadata.percent.toFixed(2) + " %");
+      if (metadata.currentFile) {
+        //console.log("current file = " + metadata.currentFile);
+        $("#loader-text").text("진행율 : " + metadata.percent.toFixed(2) + " % ");
+        $("#current-file").text("현재 파일 : " + metadata.currentFile +" 압축중...");
+      }else{
+        $("#loader-text").text("진행율 : " + metadata.percent.toFixed(2) + " % ");
+        $("#current-file").text("압축 작업을 완료하였습니다. 추가적인 분류를 하실 경우 페이지 새로고침을 해주세요.");
+      }
+    }).then(function (blob) {
+      console.log(blob);
+      saveAs(blob, String(addr));
+    });
+    
+  }else if(flag_downloaded == 2){
   }
 
-  zip.generateAsync({ type: "blob" }).then(function (blob) {
-    saveAs(blob, String(addr));
-  });
 }
-
 
 
 /**
@@ -337,8 +366,37 @@ function srch_file_Data(param_FileName){
       return files[z];
     }
   }
-  
 }
+
+/**
+ * 미사용
+ * 선택한파일 로컬에폴더에 저장하기
+ * 선택한 feature의 이름비교하여 같은것만 압축에 포함한다.
+ * 
+ * @class
+ * @augments
+ * @param {File}
+ */
+
+ function select_download_Folder() {
+  // global_Vector_Source.getFeatures() 전체 레이어 객체
+  // global_Vector_Source.getFeatures()[0].A.url 전체 레이어 파일명
+  // selectedFeatures.R[0].A.url 선택된 레이어 파일명
+  flag_downloaded = 2;
+  try {
+    var corrdinates = selectedFeatures.R[0].A.geometry.flatCoordinates
+    var p_5179 = proj4('EPSG:3857','EPSG:5179',[corrdinates[0],corrdinates[1]]);
+    Reverse_GeoCodding(p_5179[0],p_5179[1]);
+    
+  } catch (error) {
+    console.log(error);
+    alert("선택하신 위치가 없습니다.");
+    
+  }
+
+}
+
+
 /**
  * SGIS 지오코딩
  * 기능 : 해당주소를 5179좌표로 변환하여 알려준다.
@@ -435,6 +493,8 @@ function geocode_promise_function(param) {
     });
   });
 }
+
+
 /**
  * SGIS 인증키발급
  * 기능 : SGIS 인증키를 매번 실행시 받는다.
