@@ -238,7 +238,9 @@ $(function () {
 
 /**
  * drag & drop 부분
- *
+ * 이미지의 exif to EPSG:3857 변환후 레이어추가
+ * attach_file_list 파일목록 출력 유무
+ * 
  * @class
  * @augments
  * @param {File}

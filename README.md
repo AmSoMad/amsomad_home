@@ -49,3 +49,6 @@
 > [page] makeupimg Progress % add <br>
 > [page] makeupimg ctrl + drag error fix<br> 
 >> features 유무 조건 추가
+
+> version 0.1.10 <br>
+> [page] makeupimg modify <br>
