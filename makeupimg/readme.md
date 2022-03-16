@@ -3,7 +3,9 @@
 > 사진의 GPS(exif)정보를 통하여 지도를 통하여 장소별로 사진을 분리하기 <br>
 
 구현페이지 : [https://amsomad.com/makeupimg/makeupimg.html](https://amsomad.com/makeupimg/makeupimg.html)
+
 구현소스   : [makeupimg.js](https://github.com/AmSoMad/amsomad_home/blob/main/assets/js/makeupimg/makeupimg.js)
+
 구현히스토리 : [amsomad.github.io](https://amsomad.github.io/%EA%B0%9C%EB%B0%9C%EC%9D%B4%EC%95%BC%EA%B8%B0/post2/)
 
 ## 🐐 사용방법 예시
