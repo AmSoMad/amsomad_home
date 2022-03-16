@@ -15,7 +15,7 @@ color 18d26e to 009B77
 */
 *::-webkit-scrollbar { display: block; width: 10px; }
 *::-webkit-scrollbar-thumb { background-color: #18d26e; }
-*::-webkit-scrollbar-track { background-color: #040404; }
+*::-webkit-scrollbar-track { background-color: #282828; }
 
 body {
   font-family: "Open Sans", sans-serif;
@@ -28,7 +28,7 @@ body {
 body::before {
   content: "";
   position: fixed;
-  background: #040404 url("../img/bg01.jpg") top right no-repeat; 
+  background: #040404 url("../img/bg08.jpg") top right no-repeat; 
   background-size: cover;
   left: 0;
   right: 0;
@@ -144,6 +144,7 @@ h1, h2, h3, h4, h5, h6 {
   top: 0;
   right: 0;
   background: rgba(0, 0, 0, 0.9);
+  /* background: rgba(40, 40, 40, 0.9); */
 }
 #header.header-top .social-links, #header.header-top h2 {
   display: none;

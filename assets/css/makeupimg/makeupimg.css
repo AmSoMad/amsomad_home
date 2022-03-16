@@ -1,6 +1,6 @@
-*{
+/* *{
     font-family: 'CookieRun-Regular';
-}
+} */
 /* "CookieRun-Regular" */
 @font-face {
     font-family: 'CookieRun-Regular';
@@ -22,7 +22,7 @@ body {
   background: #040404 url("/assets/img/bg02.jpg") top right no-repeat; 
   background-size: cover;
   font-family: "Open Sans Condensed", Arial, Helvetica, Verdana, sans-serif;
-  color: #997;
+  color: #FFF;
 }
 
 
