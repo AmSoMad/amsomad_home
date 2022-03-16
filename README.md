@@ -62,3 +62,6 @@
 > [page] index.html fillter 변경<br>
 > [page] portfolio -3 이미지 크기변경<br>
 > portfolio ENTER-recruit  add
+
+> version 0.1.12 <br>
+> readme.md add <br>
