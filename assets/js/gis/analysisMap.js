@@ -858,7 +858,7 @@ var feature = map.forEachFeatureAtPixel(evt.pixel,
     });
 
 vworld_wfs(evt);
-
+execl_upload_info(feature,evt);
     if (feature) {
         var coordinates = feature.getGeometry().getCoordinates();
         // https://www.hasudoinfo.or.kr/stat/selectPlant.do
@@ -1570,4 +1570,22 @@ function add_Feature_Marker(category){
     }else{
         console.log('빠짐');
     }
+}
+
+function execl_upload_info(feature, evt){
+    let resultFeature = feature;
+    let wfs_html = "";
+    for (let i in resultFeature.getKeys()) {
+        if (resultFeature.getKeys()[i] == "bbox") {
+            continue;
+        }
+        wfs_html += resultFeature.getKeys()[i] + " = " + resultFeature.get(resultFeature.getKeys()[i]) + "\n<br>";
+    }
+    wfs_html += "--------------------------------------<br>";
+    $('#wfs_result').html(wfs_html);
+    //alert(wfs_html);
+    const coordinate = evt.coordinate;
+    //const hdms = toStringHDMS(toLonLat(coordinate));
+    content.innerHTML = '<p>선택한 레이어정보 : </p><code>' + wfs_html + '</code><br>';
+    overlay.setPosition(coordinate);
 }
