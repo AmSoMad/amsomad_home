@@ -19,7 +19,7 @@
 body {
   max-width: 800px;
   margin: 0.5em auto;
-  background: #040404 url("/assets/img/bg02.jpg") top right no-repeat; 
+  /*background: #040404 url("/assets/img/bg02.jpg") top right no-repeat; */
   background-size: cover;
   font-family: "Open Sans Condensed", Arial, Helvetica, Verdana, sans-serif;
   color: #FFF;
