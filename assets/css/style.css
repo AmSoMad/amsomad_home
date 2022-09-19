@@ -28,7 +28,7 @@ body {
 body::before {
   content: "";
   position: fixed;
-  background: #040404 url("../img/bg10.jpg") top right no-repeat; 
+  background: #040404 url("../img/bg07.jpg") top right no-repeat; 
   /* background: #040404 url("https://picsum.photos/1920/1080?random=1") top right no-repeat;  */
   background-size: cover;
   left: 0;
