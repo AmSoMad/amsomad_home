@@ -9,16 +9,6 @@
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script> 
     <script>
         $(document).ready(function () {
-              $('span.txt_addr').on('click', function() {
-                var liElement = $(this).closest('li.list_post_item');
-                var address = liElement.attr('data-addr');
-                var addressEng = liElement.attr('data-addr_eng');
-                var buildingName = liElement.attr('data-building_name');
-    
-                console.log("Address: " + address);
-                console.log("Address(ENG): " + addressEng);
-                console.log("Building Name: " + buildingName);
-              });
             var themeObj = {
                bgColor: "white", //바탕 배경색
                searchBgColor: "lightblue", //검색창 배경색
@@ -35,10 +25,8 @@
                 new daum.Postcode({
                     theme : themeObj,
                     oncomplete: function (data) {
-                        // 팝업에서 검색결과 항목을 클릭했을때 실행할 코드를 작성하는 부분입니다.
-                        // 예제를 참고하여 다양한 활용법을 확인해 보세요.
-                        if (window.external) {
-                            window.external.CallForm(data.zonecode, data.address);
+                        if(window.chrome.webview.hostObjects.external){
+                            window.chrome.webview.hostObjects.external.CallForm(data.zonecode, data.address, data.buildingName, data.addressEnglish);
                         }
                     },
                     
@@ -47,7 +35,6 @@
                     useSuggest: false,
                 });
             }
-
             showzip();
         });
     </script>
