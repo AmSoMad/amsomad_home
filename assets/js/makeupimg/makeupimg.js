@@ -568,6 +568,3 @@ function attach_file_list() {
   html += "</table>";
   $("#attach_file_list").html(html);
 }
-
-// 출처: https://jamssoft.tistory.com/191 [What should I do?]
-
