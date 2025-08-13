@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>관리자 · 배드민턴 토너먼트</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <!-- 개발에선 SW 비활성/캐시청소, 배포에서만 등록 -->
+  <script>
+    const isLocal = ["localhost","127.0.0.1"].includes(location.hostname);
+    if ("serviceWorker" in navigator) {
+      if (!isLocal) {
+        window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
+      } else {
+        navigator.serviceWorker?.getRegistrations?.().then(rs => rs.forEach(r => r.unregister()));
+        caches?.keys?.().then(keys => keys.forEach(k => caches.delete(k)));
+      }
+    }
+  </script>
+
+  <!-- UI / SDK -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="./config.js"></script>
+
+  <!-- Pantone Theme -->
+  <style>
+    :root{
+      --brand-25:#fbf7f5;--brand-100:#efe3dc;--brand-200:#e3cfc4;--brand-300:#d2b6a9;
+      --brand-400:#bf9b8e;--brand-500:#b18474;--brand-600:#a47864;--brand-700:#8f6655;
+      --brand-800:#6f4f45;--brand-900:#4f3a32;--brand-contrast:#ffffff;
+      --info-100:#e7eef5;--info-700:#0F4C81;--success-100:#e8f7ef;--success-700:#15803d;
+      --danger-100:#fde7eb;--danger-700:#be3455;
+      --chip-bg:var(--brand-100);--chip-fg:#3b2f2a;
+    }
+    .btn-primary{background:var(--brand-600);color:var(--brand-contrast)}
+    .btn-primary:hover{filter:brightness(0.95)}
+    .btn-outline{border:1px solid var(--brand-300);background:#fff;color:var(--brand-800)}
+    .btn-outline:hover{border-color:var(--brand-400);background:var(--brand-25)}
+    .brand-card{border-color:var(--brand-200)}
+    .chip{background:var(--chip-bg);color:var(--chip-fg)}
+    .chip-info{background:var(--info-100);color:var(--info-700)}
+    .chip-success{background:var(--success-100);color:var(--success-700)}
+    .chip-danger{background:var(--danger-100);color:var(--danger-700)}
+    .lock-scroll{overflow:hidden}
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <!-- Page Loading -->
+  <div id="pageLoading" class="fixed inset-0 z-50 hidden items-center justify-center bg-white/80 backdrop-blur">
+    <div class="flex flex-col items-center gap-3">
+      <div class="h-10 w-10 rounded-full border-4 border-slate-300 border-t-slate-700 animate-spin"></div>
+      <div class="text-sm text-slate-600">로딩 중…</div>
+    </div>
+  </div>
+
+  <!-- Saving -->
+  <div id="savingOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/30">
+    <div class="bg-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
+      <div class="h-5 w-5 rounded-full border-2 border-slate-300 border-t-slate-700 animate-spin"></div>
+      <div class="text-sm text-slate-700">저장 중…</div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-3 py-2 flex items-center justify-between">
+      <h1 class="text-lg md:text-xl font-bold">🛠️ 관리자</h1>
+      <nav class="flex items-center gap-2">
+        <a href="./index.html" class="rounded px-3 py-2 btn-outline text-sm">메인</a>
+        <a href="./referee.html" class="rounded px-3 py-2 btn-outline text-sm">심판 화면</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-6xl mx-auto px-3 py-4 space-y-4">
+    <!-- 환경 모드 스위치 -->
+    <section class="rounded-2xl border brand-card bg-white shadow-sm">
+      <div class="px-3 py-2 border-b brand-card">
+        <h2 class="font-semibold">환경 모드</h2>
+      </div>
+      <div class="p-3 flex flex-col gap-2">
+        <p class="text-sm text-slate-600">개발 모드: 클라이언트 CRUD 허용 · 운영 모드: 읽기만, 쓰기는 보안 RPC만 허용</p>
+        <div class="flex flex-wrap items-center gap-2">
+          <input id="adminSecret" type="password" placeholder="관리자 비밀키"
+                 class="w-56 rounded border brand-card px-2 py-1 text-sm" />
+          <button id="btnModeDev"  class="rounded px-3 py-2 text-sm btn-outline">개발 모드 전환</button>
+          <button id="btnModeProd" class="rounded px-3 py-2 text-sm btn-primary">운영 모드 전환</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 데모 데이터 시드 (RPC) -->
+    <section class="rounded-2xl border brand-card bg-white shadow-sm">
+      <div class="px-3 py-2 border-b brand-card flex items-center justify-between">
+        <h2 class="font-semibold">데모 데이터 주입</h2>
+      </div>
+      <div class="p-3 flex flex-wrap items-center gap-2">
+        <input id="seedTeamCount" type="number" min="1" value="20"
+               class="w-24 rounded border brand-card px-2 py-1 text-sm" />
+        <span class="text-sm text-slate-600">팀 수 (각 팀 2명: 남/여)</span>
+        <button id="btnSeedDemo" class="ml-auto rounded px-3 py-2 text-sm btn-outline">
+          데모 데이터 주입 (RPC)
+        </button>
+      </div>
+    </section>
+
+    <!-- Danger Zone: 전체 초기화 -->
+    <section class="rounded-2xl border brand-card bg-white shadow-sm">
+      <div class="px-3 py-2 border-b brand-card flex items-center justify-between">
+        <h2 class="font-semibold text-rose-700">위험: 전체 초기화</h2>
+      </div>
+      <div class="p-3 flex flex-col gap-2">
+        <p class="text-sm text-slate-600">
+          모든 경기/세트/그룹/팀/선수 데이터를 삭제하고 시퀀스를 초기화합니다. 되돌릴 수 없습니다.
+        </p>
+        <div class="flex items-center gap-2">
+          <input id="hardResetKey" type="password" placeholder="관리자 비밀키"
+                 class="w-56 rounded border brand-card px-2 py-1 text-sm" />
+          <button id="btnHardReset"
+                  class="rounded px-3 py-2 text-sm"
+                  style="background:var(--danger-100);color:var(--danger-700);border:1px solid var(--danger-700)">
+            전체 초기화
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Teams -->
+    <section class="rounded-2xl border brand-card bg-white shadow-sm">
+      <div class="px-3 py-2 border-b brand-card flex items-center justify-between">
+        <h2 class="font-semibold">팀 / 선수</h2>
+        <div class="text-sm text-slate-600">시드 후 자동 갱신됩니다.</div>
+      </div>
+      <div class="p-3">
+        <div id="teamsList" class="text-sm text-slate-600">불러오는 중…</div>
+      </div>
+    </section>
+
+    <!-- Groups -->
+    <section class="rounded-2xl border brand-card bg-white shadow-sm">
+      <div class="px-3 py-2 border-b brand-card flex items-center justify-between">
+        <h2 class="font-semibold">조 구성</h2>
+        <div class="flex gap-2">
+          <input id="teamsPerGroup" type="number" min="3" max="6" value="4"
+                 class="w-20 rounded border brand-card px-2 py-1 text-sm" />
+          <button id="btnAutoGroups" class="rounded px-3 py-2 btn-primary text-sm">자동(A..F) 배정</button>
+          <button id="btnWipeGroups" class="rounded px-3 py-2 text-sm btn-outline">그룹/소속 삭제</button>
+        </div>
+      </div>
+      <div class="p-3">
+        <div id="groupsList" class="text-sm text-slate-600">불러오는 중…</div>
+      </div>
+    </section>
+
+    <!-- Matches -->
+    <section class="rounded-2xl border brand-card bg-white shadow-sm">
+      <div class="px-3 py-2 border-b brand-card flex items-center justify-between">
+        <h2 class="font-semibold">경기 생성/관리</h2>
+        <div class="flex gap-2">
+          <button id="btnRR" class="rounded px-3 py-2 btn-primary text-sm">조별 리그 생성</button>
+          <button id="btnKO" class="rounded px-3 py-2 btn-outline text-sm">8강/4강/결승 생성</button>
+          <button id="btnWipeMatches" class="rounded px-3 py-2 text-sm btn-outline">모든 경기/세트 삭제</button>
+        </div>
+      </div>
+      <div class="p-3">
+        <div class="flex flex-wrap items-center gap-2 mb-2">
+          <input id="defaultPtw" type="number" min="11" value="25"
+                 class="w-24 rounded border brand-card px-2 py-1 text-sm" />
+          <span class="text-sm text-slate-600">Points To Win</span>
+          <input id="defaultBo" type="number" min="1" value="3"
+                 class="w-20 rounded border brand-card px-2 py-1 text-sm" />
+          <span class="text-sm text-slate-600">Best Of</span>
+          <input id="defaultWinBy" type="number" min="0" value="1"
+                 class="w-20 rounded border brand-card px-2 py-1 text-sm" />
+          <span class="text-sm text-slate-600">Win By</span>
+        </div>
+
+        <div id="matchesTblWrap" class="overflow-x-auto rounded border brand-card">
+          <table class="min-w-[720px] w-full text-sm">
+            <thead>
+              <tr class="bg-[color:var(--brand-25)]">
+                <th class="p-2 text-left">ID</th>
+                <th class="p-2 text-left">Stage</th>
+                <th class="p-2 text-left">Group</th>
+                <th class="p-2 text-left">A vs B</th>
+                <th class="p-2 text-left">Court</th>
+                <th class="p-2 text-left">Status</th>
+                <th class="p-2 text-left">액션</th>
+              </tr>
+            </thead>
+            <tbody id="matchesTbody" class="divide-y"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ===== Helpers UI =====
+    const $ = (s) => document.querySelector(s);
+    const show = (el) => el.classList.remove("hidden");
+    const hide = (el) => el.classList.add("hidden");
+    const startPage = () => { show($("#pageLoading")); document.body.classList.add("lock-scroll"); };
+    const endPage = () => { hide($("#pageLoading")); document.body.classList.remove("lock-scroll"); };
+    const startSaving = () => { show($("#savingOverlay")); document.body.classList.add("lock-scroll"); };
+    const endSaving = () => { hide($("#savingOverlay")); document.body.classList.remove("lock-scroll"); };
+
+    // ===== Supabase =====
+    const sb = supabase.createClient(
+      window.APP_CONFIG.SUPABASE_URL,
+      window.APP_CONFIG.SUPABASE_ANON_KEY
+    );
+
+    // ===== Loaders =====
+    async function loadTeams(){
+      const { data: teams, error } = await sb.from("teams").select("*").order("name");
+      if (error) { $("#teamsList").innerHTML = `<div class="text-rose-600 text-sm">${error.message}</div>`; return; }
+      if (!teams?.length) { $("#teamsList").innerHTML = `<div class="text-slate-500">팀이 없습니다.</div>`; return; }
+      $("#teamsList").innerHTML = `
+        <div class="grid grid-cols-1 min-[560px]:grid-cols-2 gap-2">
+          ${teams.map(t => `
+            <div class="rounded border brand-card p-2 bg-[color:var(--brand-25)]">
+              <div class="font-medium">${t.name} <span class="text-xs text-slate-500">#${t.id}</span></div>
+            </div>`).join("")}
+        </div>`;
+    }
+
+    async function loadGroups(){
+      try{
+        const { data: groups, error:gErr } = await sb.from("groups").select("*").order("name");
+        if (gErr) throw gErr;
+        if (!groups?.length){ $("#groupsList").innerHTML = `<div class="text-slate-500">그룹이 없습니다.</div>`; return; }
+
+        const { data: gt, error:gtErr } = await sb
+          .from("group_teams").select("group_id, team_id, teams(name)").order("group_id");
+        if (gtErr) throw gtErr;
+
+        const byG = new Map(); for (const g of groups) byG.set(g.id, []);
+        for (const r of gt || []) byG.get(r.group_id)?.push(r);
+
+        $("#groupsList").innerHTML = `
+          <div class="space-y-2">
+            ${groups.map(g => `
+              <div class="rounded border brand-card">
+                <div class="px-3 py-2 bg-[color:var(--brand-25)] font-semibold">
+                  조 ${g.name} <span class="text-xs text-slate-500">#${g.id}</span>
+                </div>
+                <div class="p-3 grid grid-cols-2 min-[560px]:grid-cols-4 gap-2">
+                  ${(byG.get(g.id) || []).map(x =>
+                    `<div class="rounded border brand-card px-2 py-1 bg-white text-sm">${x.teams?.name || "#"+x.team_id}</div>`
+                  ).join("")}
+                </div>
+              </div>
+            `).join("")}
+          </div>`;
+      }catch(e){
+        console.warn(e);
+        $("#groupsList").innerHTML =
+          `<div class="text-rose-600 text-sm">group_teams/ groups 조회 실패: ${e.message || e}</div>`;
+      }
+    }
+
+    async function loadMatches(){
+      const { data: matches, error:mErr } = await sb
+        .from("matches").select("*, groups(name)").order("stage").order("group_id").order("id");
+      if (mErr){ $("#matchesTbody").innerHTML = `<tr><td colspan="7" class="p-3 text-rose-600 text-sm">${mErr.message}</td></tr>`; return; }
+      if (!matches?.length){ $("#matchesTbody").innerHTML = `<tr><td colspan="7" class="p-3 text-slate-500">경기가 없습니다.</td></tr>`; return; }
+      const { data: teams } = await sb.from("teams").select("id,name");
+      const tmap = new Map((teams||[]).map(t=>[t.id,t.name]));
+      $("#matchesTbody").innerHTML = matches.map(m => `
+        <tr>
+          <td class="p-2">#${m.id}</td>
+          <td class="p-2">${(m.stage||"").toUpperCase()}</td>
+          <td class="p-2">${m.group_id ? ("조 " + (m.groups?.name||m.group_id)) : "-"}</td>
+          <td class="p-2">${tmap.get(m.team_a_id)||("#"+m.team_a_id)} vs ${tmap.get(m.team_b_id)||("#"+m.team_b_id)}</td>
+          <td class="p-2">
+            <input type="number" value="${m.court_no||""}" class="w-16 rounded border brand-card px-2 py-1 text-sm"
+                   onchange="updateCourt(${m.id}, this.value)" />
+          </td>
+          <td class="p-2">
+            <select class="rounded border brand-card px-2 py-1 text-sm"
+                    onchange="updateStatus(${m.id}, this.value)">
+              ${["pending","live","done"].map(s => `<option value="${s}" ${m.status===s?"selected":""}>${s}</option>`).join("")}
+            </select>
+          </td>
+          <td class="p-2">
+            <button class="px-2 py-1 rounded btn-outline text-xs" onclick="markFinal(${m.id}, true)">완료</button>
+            <button class="ml-1 px-2 py-1 rounded btn-outline text-xs" onclick="markFinal(${m.id}, false)">해제</button>
+            <button class="ml-1 px-2 py-1 rounded btn-primary text-xs" onclick="openInRef(${m.id})">심판열기</button>
+          </td>
+        </tr>`).join("");
+    }
+
+    // ===== Actions: Groups / Matches =====
+    async function autoGroups(){
+      const per = Math.max(3, Math.min(6, parseInt($("#teamsPerGroup").value||"4",10)));
+      startSaving();
+      try{
+        const { data: teams } = await sb.from("teams").select("id").order("id");
+        if (!teams?.length) { alert("팀이 없습니다."); return; }
+        await sb.from("group_teams").delete().neq("group_id",-1);
+        await sb.from("groups").delete().neq("id",-1);
+        const gcount = Math.ceil(teams.length / per);
+        const names = Array.from({length:gcount},(_,i)=>String.fromCharCode(65+i)); // A..Z
+        const { data: insGroups } = await sb.from("groups").insert(names.map(n=>({ name:n }))).select("*");
+        let idx = 0, gmap = insGroups.reduce((a,g)=>{a[g.name]=g.id;return a;},{});
+        let rows = [];
+        for (const t of teams){
+          const gName = names[idx % gcount];
+          rows.push({ group_id: gmap[gName], team_id: t.id });
+          idx++;
+        }
+        if (rows.length) await sb.from("group_teams").insert(rows);
+      } finally { endSaving(); await loadGroups(); }
+    }
+    async function wipeGroups(){
+      if (!confirm("그룹과 소속을 모두 삭제합니까?")) return;
+      startSaving();
+      try{
+        await sb.from("group_teams").delete().neq("group_id",-1);
+        await sb.from("groups").delete().neq("id",-1);
+      } finally { endSaving(); await loadGroups(); }
+    }
+    function rrPairs(ids){ const p=[]; for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++) p.push([ids[i],ids[j]]); return p; }
+    async function createGroupRoundRobin(){
+      const ptw = parseInt($("#defaultPtw").value||"25",10);
+      const bo  = parseInt($("#defaultBo").value||"3",10);
+      const wb  = parseInt($("#defaultWinBy").value||"1",10);
+      startSaving();
+      try{
+        const { data: groups } = await sb.from("groups").select("*").order("name");
+        if (!groups?.length){ alert("그룹이 없습니다."); return; }
+        const { data: gt } = await sb.from("group_teams").select("group_id, team_id").order("group_id");
+        const by = new Map(); for(const g of groups) by.set(g.id, []);
+        for(const r of gt||[]) by.get(r.group_id).push(r.team_id);
+        let rows = [];
+        for(const g of groups){
+          const ids = by.get(g.id); if(!ids || ids.length < 3) continue;
+          for(const [a,b] of rrPairs(ids)){
+            rows.push({ stage:"group", group_id:g.id, team_a_id:a, team_b_id:b,
+                        best_of:bo, points_to_win:ptw, win_by:wb, cap:null,  });
+          }
+        }
+        if (rows.length) await sb.from("matches").insert(rows);
+      } finally { endSaving(); await loadMatches(); }
+    }
+    async function createKnockoutFromStandings(){
+      const ptw = parseInt($("#defaultPtw").value||"25",10);
+      const bo  = parseInt($("#defaultBo").value||"3",10);
+      const wb  = parseInt($("#defaultWinBy").value||"1",10);
+      startSaving();
+      try{
+        const { data: ranks } = await sb.from("v_group_ranked")
+          .select("team_id, group_name, group_rank, team_name")
+          .lte("group_rank",2).order("group_rank").order("team_name");
+        if (!ranks?.length){ alert("순위 데이터가 없습니다."); return; }
+        const seeds = ranks.slice(0,8).map(r=>r.team_id);
+        const pairs = [[0,7],[3,4],[1,6],[2,5]];
+        let qfRows = [];
+        for(const [i,j] of pairs){
+          if (seeds[i] && seeds[j]) {
+            qfRows.push({ stage:"qf", team_a_id:seeds[i], team_b_id:seeds[j],
+                          best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending" });
+          }
+        }
+        if (qfRows.length) await sb.from("matches").insert(qfRows);
+        await sb.from("matches").insert([
+          { stage:"sf",   best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending" },
+          { stage:"sf",   best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending" },
+          { stage:"final",best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending" },
+        ]);
+      } finally { endSaving(); await loadMatches(); }
+    }
+    async function wipeMatches(){
+      if (!confirm("모든 경기 및 세트 점수를 삭제합니까?")) return;
+      startSaving();
+      try{
+        await sb.from("match_sets").delete().neq("match_id",-1);
+        await sb.from("matches").delete().neq("id",-1);
+      } finally { endSaving(); await loadMatches(); }
+    }
+
+    // ===== Row actions =====
+    async function updateCourt(mid, val){ await sb.from("matches").update({ court_no: (val? parseInt(val,10): null) }).eq("id", mid); }
+    async function updateStatus(mid, status){ await sb.from("matches").update({ status }).eq("id", mid); }
+    async function markFinal(mid, flag){ await sb.from("matches").update({ is_final: !!flag }).eq("id", mid); }
+    function openInRef(mid){ location.href = `./referee.html?match=${mid}`; }
+    window.updateCourt = updateCourt;
+    window.updateStatus = updateStatus;
+    window.markFinal   = markFinal;
+    window.openInRef   = openInRef;
+
+    // ===== Danger: 전체 초기화 (RPC) =====
+    async function hardReset(){
+      const key = document.getElementById("hardResetKey").value.trim() ||
+                  document.getElementById("adminSecret").value.trim();
+      if (!key) { alert("비밀키를 입력하세요."); return; }
+      if (!confirm("정말 전체 삭제/초기화 하시겠습니까? 되돌릴 수 없습니다.")) return;
+      startSaving();
+      try{
+        const { error } = await sb.rpc("admin_reset_all", { p_secret: key });
+        if (error) { console.error(error); alert("실패: " + (error.message || "권한/비밀키를 확인하세요.")); return; }
+        await loadTeams(); await loadGroups(); await loadMatches();
+        alert("초기화 완료!");
+      } finally { endSaving(); }
+    }
+
+    // ===== Mode switch (RPC) =====
+    async function switchMode(mode){
+      const key = document.getElementById("adminSecret").value.trim() ||
+                  document.getElementById("hardResetKey").value.trim();
+      if (!key){ alert("관리자 비밀키를 입력하세요."); return; }
+      if (!confirm(`정말 '${mode}' 모드로 전환할까요?`)) return;
+      startSaving();
+      try{
+        const { data, error } = await sb.rpc("admin_set_mode", { p_mode: mode, p_secret: key });
+        if (error){ console.error(error); alert("실패: " + (error.message||"")); return; }
+        alert(`모드 전환 완료: ${data}`);
+      } finally { endSaving(); }
+    }
+
+    // ===== Demo seed (RPC) =====
+    async function seedDemo(){
+      const key = document.getElementById("adminSecret").value.trim() ||
+                  document.getElementById("hardResetKey").value.trim();
+      if (!key){ alert("관리자 비밀키를 입력하세요."); return; }
+      const n = parseInt(document.getElementById("seedTeamCount").value || "20", 10);
+      startSaving();
+      try{
+        const { error } = await sb.rpc("admin_seed_demo", { p_secret: key, p_team_count: n });
+        if (error){ console.error(error); alert("실패: " + (error.message||"")); return; }
+        await loadTeams(); // 필요 시 바로 그룹 배정/라운드로빈까지 자동화 가능
+        alert("데모 데이터 주입 완료");
+      } finally { endSaving(); }
+    }
+
+    // ===== Realtime =====
+    function subscribeRealtime(){
+      sb.channel("admin")
+        .on("postgres_changes",{event:"*",schema:"public",table:"teams"}, loadTeams)
+        .on("postgres_changes",{event:"*",schema:"public",table:"groups"}, loadGroups)
+        .on("postgres_changes",{event:"*",schema:"public",table:"group_teams"}, loadGroups)
+        .on("postgres_changes",{event:"*",schema:"public",table:"matches"}, loadMatches)
+        .subscribe();
+    }
+
+    // ===== Bootstrap =====
+    (async ()=>{
+      try{
+        startPage();
+        // Buttons
+        document.getElementById("btnHardReset").addEventListener("click", hardReset);
+        document.getElementById("btnModeDev").addEventListener("click",  () => switchMode("dev"));
+        document.getElementById("btnModeProd").addEventListener("click", () => switchMode("prod"));
+        document.getElementById("btnSeedDemo").addEventListener("click", seedDemo);
+        document.getElementById("btnAutoGroups").addEventListener("click", autoGroups);
+        document.getElementById("btnWipeGroups").addEventListener("click", wipeGroups);
+        document.getElementById("btnRR").addEventListener("click", createGroupRoundRobin);
+        document.getElementById("btnKO").addEventListener("click", createKnockoutFromStandings);
+        document.getElementById("btnWipeMatches").addEventListener("click", wipeMatches);
+
+        await loadTeams();
+        await loadGroups();
+        await loadMatches();
+        subscribeRealtime();
+      } finally { endPage(); }
+    })();
+  </script>
+</body>
+</html>

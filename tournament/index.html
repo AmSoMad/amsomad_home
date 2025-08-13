@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>배드민턴 토너먼트</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+
+  <!-- 개발에선 SW 비활성/캐시청소, 배포에서만 등록 -->
+  <script>
+    const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
+    if ("serviceWorker" in navigator) {
+      if (!isLocal) {
+        window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
+      } else {
+        navigator.serviceWorker?.getRegistrations?.().then(rs => rs.forEach(r => r.unregister()));
+        caches?.keys?.().then(keys => keys.forEach(k => caches.delete(k)));
+      }
+    }
+  </script>
+
+  <!-- UI / SDK -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="./config.js"></script>
+
+  <!-- Pantone Theme (Mocha Mousse 기본) -->
+  <style id="pantone-theme">
+    :root {
+      /* Mocha Mousse (Pantone 17-1230) - 근사값 */
+      --brand-25:#fbf7f5; --brand-100:#efe3dc; --brand-200:#e3cfc4; --brand-300:#d2b6a9;
+      --brand-400:#bf9b8e; --brand-500:#b18474; --brand-600:#a47864; --brand-700:#8f6655;
+      --brand-800:#6f4f45; --brand-900:#4f3a32; --brand-contrast:#ffffff;
+
+      /* 상태 색 */
+      --info-100:#e7eef5;   --info-700:#0F4C81; /* Classic Blue */
+      --success-100:#e8f7ef;--success-700:#15803d;
+      --danger-100:#fde7eb; --danger-700:#be3455;
+
+      --chip-bg:var(--brand-100); --chip-fg:#3b2f2a;
+    }
+
+    /* 공용 버튼 */
+    .btn-primary{background:var(--brand-600);color:var(--brand-contrast)}
+    .btn-primary:hover{filter:brightness(0.95)}
+    .btn-outline{border:1px solid var(--brand-300);color:var(--brand-800);background:#fff}
+    .btn-outline:hover{border-color:var(--brand-400);background:var(--brand-25)}
+
+    header{border-color:var(--brand-200)!important}
+    .brand-card{border-color:var(--brand-200)}
+    .chip{background:var(--chip-bg);color:var(--chip-fg)}
+    .chip-info{background:var(--info-100);color:var(--info-700)}
+    .chip-success{background:var(--success-100);color:var(--success-700)}
+    .chip-danger{background:var(--danger-100);color:var(--danger-700)}
+
+    .lock-scroll{overflow:hidden}
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <!-- Page Loading Overlay -->
+  <div id="pageLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur">
+    <div class="flex flex-col items-center gap-3">
+      <div class="h-10 w-10 rounded-full border-4 border-slate-300 border-t-slate-700 animate-spin"></div>
+      <div class="text-sm text-slate-600">로딩 중…</div>
+    </div>
+  </div>
+
+  <!-- Saving Overlay -->
+  <div id="savingOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/30">
+    <div class="bg-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
+      <div class="h-5 w-5 rounded-full border-2 border-slate-300 border-t-slate-700 animate-spin"></div>
+      <div class="text-sm text-slate-700">저장 중…</div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
+    <div class="max-w-6xl mx-auto px-3 py-2 flex items-center justify-between">
+      <h1 class="text-lg md:text-xl font-bold">🏸 배드민턴 토너먼트</h1>
+      <div class="hidden md:flex gap-1" id="topTabs"></div>
+    </div>
+    <div class="max-w-6xl mx-auto px-3 pb-2">
+      <!-- 대형타이머 링크 제거, 테마셀 추가 -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <select id="teamFilter" class="w-full rounded-lg border-slate-300 text-sm md:text-base">
+          <option value="">모든 팀</option>
+        </select>
+        <input id="quickPin" type="password" placeholder="팀 PIN(선택)"
+               class="w-full rounded-lg border-slate-300 text-sm md:text-base" />
+        <a href="./referee.html" class="text-center rounded-lg px-3 py-2 btn-outline text-sm md:text-base">심판 화면</a>
+        <select id="themeSelect" class="w-full rounded-lg border-slate-300 text-sm md:text-base">
+          <option value="mocha">Mocha Mousse 2025</option>
+          <option value="peach">Peach Fuzz 2024</option>
+          <option value="classic">Classic Blue 2020</option>
+        </select>
+        <div class="flex gap-2">
+          <button id="btnPdf" class="rounded-lg px-3 py-2 btn-outline text-sm md:text-base">PDF</button>
+          <button id="btnShare" class="rounded-lg px-3 py-2 btn-primary text-sm md:text-base">공유/QR</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-6xl mx-auto px-3 py-3 pb-[calc(56px+env(safe-area-inset-bottom))] md:pb-6">
+    <section id="tab-group" class="hidden">
+      <h2 class="text-base md:text-lg font-semibold mb-2">조별 경기</h2>
+      <div id="groupMatches" class="space-y-4"></div>
+    </section>
+
+    <section id="tab-standings" class="hidden mb-6">
+      <h2 class="text-base md:text-lg font-semibold mb-2">조별 순위</h2>
+      <div id="standings" class="space-y-4"></div>
+    </section>
+
+    <section id="tab-bracket" class="hidden">
+      <h2 class="text-base md:text-lg font-semibold mb-2">토너먼트</h2>
+      <div id="bracketSvgWrap" class="w-full overflow-x-auto">
+        <svg id="bracketSvg" width="1200" height="540" class="bg-white rounded-2xl border shadow-sm"></svg>
+      </div>
+      <div class="mt-6 grid md:grid-cols-2 gap-3">
+        <div>
+          <h3 class="font-semibold mb-2">8강</h3>
+          <div id="qf" class="grid grid-cols-1 min-[600px]:grid-cols-2 gap-3"></div>
+        </div>
+        <div>
+          <h3 class="font-semibold mb-2">4강 · 결승</h3>
+          <div id="sf" class="grid grid-cols-1 min-[600px]:grid-cols-2 gap-3"></div>
+          <div id="fin" class="grid grid-cols-1 gap-3 mt-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-schedule" class="hidden">
+      <h2 class="text-base md:text-lg font-semibold mb-2">일정</h2>
+      <div id="schedule" class="grid grid-cols-1 min-[600px]:grid-cols-2 gap-3"></div>
+    </section>
+  </main>
+
+  <!-- Mobile bottom tabs -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 h-14">
+    <div id="bottomTabs" class="grid grid-cols-4 h-full"></div>
+  </nav>
+
+  <!-- QR Modal -->
+  <div id="qrModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center">
+    <div class="bg-white p-4 rounded-2xl w-80">
+      <div id="qrBox" class="flex items-center justify-center"></div>
+      <button class="mt-3 w-full rounded py-2 btn-primary" onclick="closeQR()">닫기</button>
+    </div>
+  </div>
+
+  <script>
+    // ===== Small helpers =====
+    const $ = (sel) => document.querySelector(sel);
+    const showEl = (el) => el.classList.remove("hidden");
+    const hideEl = (el) => el.classList.add("hidden");
+    const pageLoadingEl = () => $("#pageLoading");
+    const savingEl = () => $("#savingOverlay");
+
+    function startPageLoading(){ showEl(pageLoadingEl()); document.body.classList.add("lock-scroll"); }
+    function endPageLoading(){ hideEl(pageLoadingEl()); document.body.classList.remove("lock-scroll"); }
+    function startSaving(){ showEl(savingEl()); document.body.classList.add("lock-scroll"); }
+    function endSaving(){ hideEl(savingEl()); document.body.classList.remove("lock-scroll"); }
+
+    // ===== Theme palettes =====
+    const PALETTES = {
+      mocha:{brand:{25:"#fbf7f5",100:"#efe3dc",200:"#e3cfc4",300:"#d2b6a9",400:"#bf9b8e",500:"#b18474",600:"#a47864",700:"#8f6655",800:"#6f4f45",900:"#4f3a32",contrast:"#ffffff"},info:{bg:"#e7eef5",fg:"#0F4C81"},success:{bg:"#e8f7ef",fg:"#15803d"},danger:{bg:"#fde7eb",fg:"#be3455"},chip:{bg:"#efe3dc",fg:"#3b2f2a"}},
+      peach:{brand:{25:"#fff7f1",100:"#ffe9da",200:"#ffd8c0",300:"#ffc8a8",400:"#ffbe98",500:"#ffb387",600:"#f59f75",700:"#dd8e67",800:"#b97455",900:"#945e46",contrast:"#3b2f2a"},info:{bg:"#e8f0fa",fg:"#0F4C81"},success:{bg:"#e8f7ef",fg:"#15803d"},danger:{bg:"#fde7eb",fg:"#be3455"},chip:{bg:"#ffe9da",fg:"#5a463e"}},
+      classic:{brand:{25:"#f3f7fb",100:"#e6eef6",200:"#cfe0ee",300:"#b7d0e5",400:"#5a8fbd",500:"#2f6ea2",600:"#0F4C81",700:"#0d416f",800:"#0b365d",900:"#082a47",contrast:"#ffffff"},info:{bg:"#e6eef6",fg:"#0F4C81"},success:{bg:"#e8f7ef",fg:"#15803d"},danger:{bg:"#fde7eb",fg:"#be3455"},chip:{bg:"#e6eef6",fg:"#0F4C81"}},
+    };
+    function applyTheme(name="mocha"){
+      const p = PALETTES[name] || PALETTES.mocha;
+      const s = document.documentElement.style;
+      Object.entries(p.brand).forEach(([k,v])=>s.setProperty(`--brand-${k}`,v));
+      s.setProperty("--info-100",p.info.bg); s.setProperty("--info-700",p.info.fg);
+      s.setProperty("--success-100",p.success.bg); s.setProperty("--success-700",p.success.fg);
+      s.setProperty("--danger-100",p.danger.bg); s.setProperty("--danger-700",p.danger.fg);
+      s.setProperty("--chip-bg",p.chip.bg); s.setProperty("--chip-fg",p.chip.fg);
+      localStorage.setItem("theme", name);
+      const sel = document.getElementById("themeSelect"); if (sel) sel.value = name;
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("themeSelect")?.addEventListener("change", (e)=>{ applyTheme(e.target.value); setTimeout(()=>renderAll(),0); });
+    });
+
+    // ===== Supabase =====
+    const sb = supabase.createClient(window.APP_CONFIG.SUPABASE_URL, window.APP_CONFIG.SUPABASE_ANON_KEY);
+    const teamCache = new Map();
+    const rosterCache = new Map(); // team_id -> [player names]
+
+    // ===== Tabs =====
+    const TABS = [
+      { id: "group", label: "경기", icon: "📝" },
+      { id: "standings", label: "순위", icon: "📊" },
+      { id: "bracket", label: "토너", icon: "🏆" },
+      { id: "schedule", label: "일정", icon: "⏰" }
+    ];
+    function buildTabs() {
+      $("#topTabs").innerHTML = TABS.map(
+        (t) => `<button data-tab="${t.id}" class="px-3 py-2 rounded-lg hover:bg-[color:var(--brand-25)]" onclick="showTab('${t.id}')">${t.icon} ${t.label}</button>`
+      ).join("");
+      $("#bottomTabs").innerHTML = TABS.map(
+        (t) => `
+          <button data-tab="${t.id}" class="text-xs flex flex-col items-center justify-center gap-0.5" onclick="showTab('${t.id}')">
+            <div class="text-base leading-none">${t.icon}</div><div>${t.label}</div>
+          </button>`
+      ).join("");
+    }
+    function showTab(id){
+      for(const t of TABS){ const sec = $("#tab-"+t.id); if (sec) sec.classList.toggle("hidden", t.id!==id); }
+      localStorage.setItem("activeTab", id);
+    }
+
+    // ===== Helpers =====
+    const tn = (id) => teamCache.get(id) || `#${id}`;
+    const rn = (id) => (rosterCache.get(id) || []).join(", ");
+    const badge = (txt) => `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs chip">${txt}</span>`;
+    function statusBadge(m){
+      if (m.status === 'live') return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs chip-info">진행중</span>`;
+      if (m.is_final) return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs chip-success">완료</span>`;
+      if (['done','ended','finished'].includes(m.status)) return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs chip-danger">종료</span>`;
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs chip">대기</span>`;
+    }
+
+    // ===== Team cache + roster =====
+    async function fillTeamCache(){
+      const [teamsRes, rosterRes] = await Promise.all([
+        sb.from("teams").select("id,name").order("name"),
+        sb.from("team_members").select("team_id, players(name)").order("team_id")
+      ]);
+      for (const t of teamsRes.data || []) teamCache.set(t.id, t.name);
+      for (const row of rosterRes.data || []) {
+        const name = row.players?.name || "";
+        if (!rosterCache.has(row.team_id)) rosterCache.set(row.team_id, []);
+        if (name) rosterCache.get(row.team_id).push(name);
+      }
+      const sel = $("#teamFilter");
+      for (const [id, name] of teamCache.entries()) {
+        const o = document.createElement("option"); o.value = id; o.textContent = name; sel.appendChild(o);
+      }
+    }
+
+    // ===== Accordion helper =====
+    function accordion(title, innerHtml, open=false){
+      return `
+        <details class="rounded-2xl border brand-card bg-white shadow-sm"${open?" open":""}>
+          <summary class="cursor-pointer list-none select-none px-3 py-2 font-semibold flex items-center justify-between">
+            <span>${title}</span><span class="text-slate-500 text-sm">열기/닫기</span>
+          </summary>
+          <div class="border-t px-3 py-3">${innerHtml}</div>
+        </details>`;
+    }
+
+    // ===== Match cards (responsive + deuce rule) =====
+    function setInputs(m){
+      const ptw = Number(m.points_to_win || 25);
+      let html = "";
+      for (let i=1;i<=m.best_of;i++){
+        html += `
+          <div class="rounded-xl border brand-card bg-[color:var(--brand-25)] p-3">
+            <div class="text-[11px] md:text-xs font-medium text-slate-600 mb-2">S${i}</div>
+            <div class="grid grid-cols-2 gap-3">
+              <!-- Team A card -->
+              <div class="rounded-lg border brand-card bg-white p-3">
+                <div class="text-sm font-semibold mb-2 truncate">${tn(m.team_a_id)}</div>
+                <div class="flex items-center gap-1">
+                  <button type="button" class="px-2 py-1 text-xs md:text-sm rounded border brand-card" onclick="bump(${m.id},${i},-1,0,${ptw})">−</button>
+                  <input id="sa_${m.id}_${i}" type="number" min="0" class="w-14 md:w-16 rounded border brand-card text-center text-sm md:text-base" oninput="clampPair(${m.id},${i},${ptw})" />
+                  <button type="button" class="px-2 py-1 text-xs md:text-sm rounded border brand-card" onclick="bump(${m.id},${i},+1,0,${ptw})">＋</button>
+                </div>
+              </div>
+              <!-- Team B card -->
+              <div class="rounded-lg border brand-card bg-white p-3">
+                <div class="text-sm font-semibold mb-2 truncate">${tn(m.team_b_id)}</div>
+                <div class="flex items-center gap-1">
+                  <button type="button" class="px-2 py-1 text-xs md:text-sm rounded border brand-card" onclick="bump(${m.id},${i},0,-1,${ptw})">−</button>
+                  <input id="sb_${m.id}_${i}" type="number" min="0" class="w-14 md:w-16 rounded border brand-card text-center text-sm md:text-base" oninput="clampPair(${m.id},${i},${ptw})" />
+                  <button type="button" class="px-2 py-1 text-xs md:text-sm rounded border brand-card" onclick="bump(${m.id},${i},0,+1,${ptw})">＋</button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }
+      return html;
+    }
+
+    // 듀스/상한 규칙
+    function applyDeuceRule(a,b,ptw){
+      a=Math.max(0,Number(a||0)); b=Math.max(0,Number(b||0));
+      const mx=Math.max(a,b), mn=Math.min(a,b);
+      if(mx<=ptw){ a=Math.min(a,ptw); b=Math.min(b,ptw); }
+      else if(mx-mn>1){ if(a>b) a=b+1; else b=a+1; }
+      return [a,b];
+    }
+    function clampPair(mid,setNo,ptw){
+      const ia=document.getElementById(`sa_${mid}_${setNo}`);
+      const ib=document.getElementById(`sb_${mid}_${setNo}`);
+      if(!ia||!ib) return;
+      const [na,nb]=applyDeuceRule(ia.value,ib.value,ptw);
+      ia.value=na; ib.value=nb;
+    }
+    function bump(mid,setNo,da,db,ptw=25){
+      const ia=document.getElementById(`sa_${mid}_${setNo}`);
+      const ib=document.getElementById(`sb_${mid}_${setNo}`);
+      if(!ia||!ib) return;
+      const a=Math.max(0,Number(ia.value||0)+(da||0));
+      const b=Math.max(0,Number(ib.value||0)+(db||0));
+      const [na,nb]=applyDeuceRule(a,b,ptw);
+      ia.value=na; ib.value=nb;
+    }
+
+    async function loadSetScores(m){
+      const { data:ss } = await sb.from("match_sets").select("set_no,score_a,score_b").eq("match_id", m.id).order("set_no");
+      for(const s of ss||[]){ const ia=$(`#sa_${m.id}_${s.set_no}`); const ib=$(`#sb_${m.id}_${s.set_no}`); if(ia) ia.value=s.score_a; if(ib) ib.value=s.score_b; }
+    }
+
+    function matchCard(m){
+      const head = `
+        <div class="flex items-center justify-between gap-3">
+          <div class="font-semibold text-sm md:text-base">
+            <span class="truncate inline-block max-w-[42vw] md:max-w-none align-middle">
+              ${tn(m.team_a_id)} <span class="text-[11px] md:text-xs text-slate-500">(${rn(m.team_a_id)})</span>
+            </span>
+            <span class="mx-1">vs</span>
+            <span class="truncate inline-block max-w-[42vw] md:max-w-none align-middle">
+              ${tn(m.team_b_id)} <span class="text-[11px] md:text-xs text-slate-500">(${rn(m.team_b_id)})</span>
+            </span>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            ${m.group_id ? badge("조별") : badge(m.stage?.toUpperCase?.() || "KO")}
+            ${m.court_no ? badge(m.court_no + "코트") : ""}
+            ${statusBadge(m)}
+          </div>
+        </div>
+        <div class="text-[11px] md:text-xs text-slate-500">
+          목표 ${m.points_to_win}${m.win_by ? ` (＋${m.win_by})` : ""}${m.cap ? ` / cap ${m.cap}` : ""}, BO${m.best_of}
+          ${m.scheduled_at ? ` · ${new Date(m.scheduled_at).toLocaleString()}` : ""}
+        </div>`;
+      const body = `
+        <div class="mt-3 space-y-3">${setInputs(m)}</div>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <button type="button" class="rounded px-3 py-2 btn-outline text-xs md:text-sm"
+                  onclick="quickWin(${m.id}, 'A', ${m.best_of}, ${Number(m.points_to_win||25)})">
+            ${tn(m.team_a_id)} 승리(자동 ${Number(m.points_to_win||25)})
+          </button>
+          <button type="button" class="rounded px-3 py-2 btn-outline text-xs md:text-sm"
+                  onclick="quickWin(${m.id}, 'B', ${m.best_of}, ${Number(m.points_to_win||25)})">
+            ${tn(m.team_b_id)} 승리(자동 ${Number(m.points_to_win||25)})
+          </button>
+        </div>
+        <div class="mt-3 flex items-center gap-2">
+          <input id="pin_${m.id}" type="password" placeholder="팀 PIN(선택)"
+                 class="rounded border brand-card px-2 py-1 text-xs w-24 md:text-sm md:w-28" />
+          <button type="button" class="rounded px-3 py-2 btn-primary"
+                  onclick="save(event, ${m.id}, ${m.best_of}, this)">저장</button>
+        </div>`;
+      setTimeout(()=>loadSetScores(m),0);
+      return `<div class="rounded-2xl border brand-card bg-white p-3 shadow-sm" id="m_${m.id}">${head}${body}</div>`;
+    }
+
+    function firstEditableSet(mid, bestOf){
+      for(let s=1;s<=bestOf;s++){ const ia=$(`#sa_${mid}_${s}`); const ib=$(`#sb_${mid}_${s}`); if(ia&&ib&&(!ia.value&&!ib.value)) return s; }
+      return 1;
+    }
+    function quickWin(mid, which, bestOf, ptw=25){
+      const s = firstEditableSet(mid,bestOf);
+      const ia = document.getElementById(`sa_${mid}_${s}`);
+      const ib = document.getElementById(`sb_${mid}_${s}`);
+      if(!ia||!ib) return;
+      if(which==='A'){ ia.value=ptw; ib.value=Math.min(Number(ib.value||0), ptw-1); }
+      else{ ib.value=ptw; ia.value=Math.min(Number(ia.value||0), ptw-1); }
+      clampPair(mid,s,ptw);
+    }
+
+    function cardMini(m){
+      const link = `${location.origin}${location.pathname}#m_${m.id}`;
+      return `
+        <div class="rounded-xl border brand-card bg-white p-3 shadow-sm">
+          <div class="font-medium">${tn(m.team_a_id)} <span class="mx-1">vs</span> ${tn(m.team_b_id)}</div>
+          <div class="text-xs text-slate-500 mt-1">BO${m.best_of} · ${m.points_to_win}${m.court_no ? ` · ${m.court_no}코트` : ""} ${m.is_final ? "· ✅완료" : ""}</div>
+          <div class="mt-2 flex gap-2">
+            <a href="#group" onclick="showTab('group'); setTimeout(()=>document.getElementById('m_'+${m.id})?.scrollIntoView({behavior:'smooth'}), 50)" class="inline-block underline">점수 입력</a>
+            <button type="button" class="ml-auto text-sm rounded px-2 btn-outline" onclick="openQR('${link}')">QR</button>
+          </div>
+        </div>`;
+    }
+
+    // ===== Data fetch & render =====
+    async function fetchState(){
+      const teamId = parseInt($("#teamFilter").value || "0", 10) || null;
+      const { data: groups } = await sb.from("groups").select("*").order("name");
+      let q = sb.from("matches").select("*").order("stage").order("group_id").order("id");
+      if (teamId) q = q.or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`);
+      const { data: matches } = await q;
+      const { data: vstats } = await sb.from("v_group_ranked").select("*").order("group_name").order("group_rank");
+      const { data: schedule } = await sb.from("v_schedule").select("*");
+      const { data: mresults } = await sb.from("v_match_results").select("*");
+      return { groups, matches, vstats, schedule, mresults, teamId };
+    }
+
+    async function renderAll(){
+      const { groups, matches, vstats, schedule, mresults, teamId } = await fetchState();
+
+      // Group matches
+      let gmHtml = "";
+      if (!teamId) {
+        let firstOpenDone = false;
+        for (const g of groups || []) {
+          const gm = (matches || []).filter((m) => m.stage === "group" && m.group_id === g.id);
+          if (!gm.length) continue;
+          const inner = `<div class="grid grid-cols-1 min-[600px]:grid-cols-2 gap-3">${gm.map((m)=>matchCard(m)).join("")}</div>`;
+          gmHtml += accordion(`조 ${g.name}`, inner, !firstOpenDone);
+          firstOpenDone = true;
+        }
+      } else {
+        for (const g of groups || []) {
+          const gm = (matches || []).filter((m) => m.stage === "group" && m.group_id === g.id);
+          if (!gm.length) continue;
+          gmHtml += `<h3 class="text-base font-semibold mb-2">조 ${g.name}</h3>`;
+          gmHtml += `<div class="grid grid-cols-1 min-[600px]:grid-cols-2 gap-3">${gm.map((m)=>matchCard(m)).join("")}</div>`;
+        }
+      }
+      $("#groupMatches").innerHTML = gmHtml || `<div class="text-slate-500">경기 없음</div>`;
+
+      // Standings
+      let st = "";
+      const gnames = [...new Set((vstats || []).map((v) => v.group_name))];
+      for (const g of gnames) {
+        const rows = (vstats || []).filter((v) => v.group_name === g);
+        st += `
+          <div class="rounded-2xl overflow-hidden border brand-card bg-white shadow-sm">
+            <div class="px-3 py-2 font-semibold bg-[color:var(--brand-25)] border-b brand-card">조 ${g}</div>
+            <table class="w-full text-xs md:text-sm">
+              <thead>
+                <tr class="bg-[color:var(--brand-25)]">
+                  <th class="p-2">순위</th><th class="p-2">팀</th><th class="p-2">승</th><th class="p-2">패</th>
+                  <th class="p-2">세트득실</th><th class="p-2">점수득실</th><th class="p-2">다득점</th><th class="p-2">H2H</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map((r)=>`
+                  <tr class="odd:bg-[color:var(--brand-25)]">
+                    <td class="p-2 text-center">${r.group_rank}</td>
+                    <td class="p-2">${r.team_name}</td>
+                    <td class="p-2 text-center">${r.win}</td>
+                    <td class="p-2 text-center">${r.loss}</td>
+                    <td class="p-2 text-center">${r.set_diff}</td>
+                    <td class="p-2 text-center">${r.point_diff}</td>
+                    <td class="p-2 text-center">${r.pts_for}</td>
+                    <td class="p-2 text-center">${(r.h2h_win_pct * 100).toFixed(0)}%</td>
+                  </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>`;
+      }
+      $("#standings").innerHTML = st || `<div class="text-slate-500">데이터 없음</div>`;
+
+      // Knockout sections
+      const renderSec = (selector, label) => {
+        const arr = (matches || []).filter((m)=>m.stage===label);
+        const host = document.querySelector(selector);
+        host.innerHTML = arr.length ? arr.map((m)=>cardMini(m)).join("") : `<div class="text-slate-500">경기 없음</div>`;
+      };
+      renderSec("#qf", "qf"); renderSec("#sf", "sf"); renderSec("#fin", "final");
+
+      // Bracket SVG
+      drawBracket(matches||[], mresults||[]);
+
+      // Schedule
+      $("#schedule").innerHTML = (schedule || []).length
+        ? (schedule || []).map((s) => {
+            const t = s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : "-";
+            return `
+              <div class="rounded-2xl border brand-card bg-white p-3 shadow-sm">
+                <div class="text-[11px] md:text-xs text-slate-500">${t} · 코트 ${s.court_no || "-"}</div>
+                <div class="mt-1 text-[11px] md:text-xs text-slate-500">${s.stage.toUpperCase()} ${s.is_final ? "· ✅" : ""}</div>
+                <div class="mt-1 font-medium">${s.team_a} vs ${s.team_b}</div>
+              </div>`;
+          }).join("")
+        : `<div class="text-slate-500">일정 없음</div>`;
+    }
+
+    // ===== Score save (async, no reload) =====
+    async function save(e, mid, bestOf, btnEl){
+      e?.preventDefault?.(); e?.stopPropagation?.();
+      const pin = $("#quickPin").value || document.getElementById(`pin_${mid}`)?.value || null;
+      const actor = (() => {
+        const tid = $("#teamFilter").value;
+        return tid ? `team:${teamCache.get(parseInt(tid, 10))}` : "team";
+      })();
+
+      const origHTML = btnEl?.innerHTML;
+      if(btnEl){ btnEl.disabled=true; btnEl.innerHTML=`<span class="inline-block h-4 w-4 border-2 border-white/50 border-t-white rounded-full animate-spin mr-2 align-[-2px]"></span>저장 중…`; }
+      startSaving();
+
+      try{
+        const calls=[];
+        for(let s=1;s<=bestOf;s++){
+          const sa = parseInt(document.getElementById(`sa_${mid}_${s}`)?.value || "0", 10);
+          const sbv = parseInt(document.getElementById(`sb_${mid}_${s}`)?.value || "0", 10);
+          calls.push(sb.rpc("upsert_score_by_pin",{ p_match_id:mid, p_set_no:s, p_score_a:sa, p_score_b:sbv, p_pin:pin, p_actor:actor }));
+        }
+        const res = await Promise.allSettled(calls);
+        if(res.some((r)=>r.status==="rejected" || r.value?.error)){ alert("일부 저장 실패. PIN/네트워크를 확인하세요."); }
+        else { await renderAll(); }
+      } finally {
+        endSaving();
+        if(btnEl){ btnEl.disabled=false; btnEl.innerHTML=origHTML; }
+      }
+    }
+
+    // ===== Realtime =====
+    function subscribeRealtime(){
+      sb.channel("pub")
+        .on("postgres_changes",{event:"*",schema:"public",table:"matches"},renderAll)
+        .on("postgres_changes",{event:"*",schema:"public",table:"match_sets"},renderAll)
+        .subscribe();
+    }
+
+    // ===== QR & PDF =====
+    function openQR(url){
+      const box=document.getElementById("qrBox");
+      box.innerHTML=""; new QRCode(box,{ text:url, width:220, height:220 });
+      document.getElementById("qrModal").classList.remove("hidden");
+    }
+    function closeQR(){ document.getElementById("qrModal").classList.add("hidden"); }
+    document.getElementById("btnShare").addEventListener("click",()=>{
+      const url=location.href;
+      if(navigator.share) navigator.share({ title:"배드민턴 토너먼트", url });
+      else { navigator.clipboard.writeText(url); alert("링크를 복사했습니다."); }
+    });
+    document.getElementById("btnPdf").addEventListener("click", async ()=>{
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit:"pt", format:"a4" });
+      let y = 36;
+      doc.setFontSize(16); doc.text("Badminton Tournament Report",36,y); y+=22;
+      doc.setFontSize(10); doc.text(new Date().toLocaleString(),36,y); y+=18;
+      const { data:vstats } = await sb.from("v_group_ranked").select("*").order("group_name").order("group_rank");
+      const groups = [...new Set((vstats||[]).map(v=>v.group_name))];
+      for(const g of groups){
+        doc.setFontSize(12); doc.text(`Group ${g}`,36,y); y+=16;
+        doc.setFontSize(9);
+        for(const r of (vstats||[]).filter(v=>v.group_name===g)){
+          const line = `${r.group_rank}. ${r.team_name}  W:${r.win} L:${r.loss}  SetΔ:${r.set_diff}  PtsΔ:${r.point_diff}`;
+          doc.text(line,36,y); y+=12; if(y>780){ doc.addPage(); y=36; }
+        }
+        y+=6;
+      }
+      doc.save("tournament-report.pdf");
+    });
+
+    // ===== Bracket (winner highlight & active lines) =====
+    function drawBracket(matches, mresults){
+      const svg = document.getElementById("bracketSvg");
+      const NS = "http://www.w3.org/2000/svg";
+      while(svg.firstChild) svg.removeChild(svg.firstChild);
+      const W=280,H=64,P=32; const colX=[20,360,700];
+      const qf=matches.filter(m=>m.stage==="qf").sort((a,b)=>a.id-b.id);
+      const sf=matches.filter(m=>m.stage==="sf").sort((a,b)=>a.id-b.id);
+      const fi=matches.filter(m=>m.stage==="final").sort((a,b)=>a.id-b.id);
+      const mrIdx = new Map((mresults||[]).map(x=>[x.match_id,x]));
+
+      const mkBox=(x,y,w,h,main,sub,win)=>{
+        const g=document.createElementNS(NS,"g");
+        const r=document.createElementNS(NS,"rect");
+        r.setAttribute("x",x); r.setAttribute("y",y); r.setAttribute("rx",12); r.setAttribute("ry",12);
+        r.setAttribute("width",w); r.setAttribute("height",h);
+        r.setAttribute("fill", win ? "var(--brand-25)" : "#ffffff");
+        r.setAttribute("stroke", win ? "var(--brand-600)" : "var(--brand-200)");
+        r.setAttribute("stroke-width", win ? "2" : "1");
+        g.appendChild(r);
+        const t=document.createElementNS(NS,"text");
+        t.setAttribute("x",x+w/2); t.setAttribute("y",y+24); t.setAttribute("text-anchor","middle");
+        t.setAttribute("font-size","14"); t.setAttribute("fill","#0f172a"); t.textContent=main; g.appendChild(t);
+        if(sub){ const s=document.createElementNS(NS,"text");
+          s.setAttribute("x",x+w/2); s.setAttribute("y",y+44); s.setAttribute("text-anchor","middle");
+          s.setAttribute("font-size","12"); s.setAttribute("fill","#64748b"); s.textContent=sub; g.appendChild(s); }
+        svg.appendChild(g);
+      };
+      const mkLine=(x1,y1,x2,y2,active)=>{
+        const l=document.createElementNS(NS,"line");
+        l.setAttribute("x1",x1); l.setAttribute("y1",y1); l.setAttribute("x2",x2); l.setAttribute("y2",y2);
+        l.setAttribute("stroke", active ? "var(--brand-600)" : "var(--brand-200)");
+        l.setAttribute("stroke-width", active ? "3" : "1"); svg.appendChild(l);
+      };
+
+      // QF
+      for(let i=0;i<qf.length;i++){
+        const m=qf[i]; const y=20+i*(H+P); const win=!!mrIdx.get(m.id)?.winner_team_id;
+        mkBox(colX[0],y,W,H,`${tn(m.team_a_id)} vs ${tn(m.team_b_id)}`,`#${m.id} · BO${m.best_of} · ${m.points_to_win}`,win);
+      }
+      // SF + 연결(QF -> SF)
+      for(let i=0;i<sf.length;i++){
+        const m=sf[i]; const y=50+i*2*(H+P); const win=!!mrIdx.get(m.id)?.winner_team_id;
+        mkBox(colX[1],y,W,H,`${tn(m.team_a_id)} vs ${tn(m.team_b_id)}`,`#${m.id}`,win);
+        const qTop=qf[i*2], qBot=qf[i*2+1];
+        const topW=mrIdx.get(qTop?.id||-1)?.winner_team_id; const botW=mrIdx.get(qBot?.id||-1)?.winner_team_id;
+        const midY=y+H/2; const y1=20+i*2*(H+P)+H/2; const y2=20+(i*2+1)*(H+P)+H/2;
+        mkLine(colX[0]+W,y1,colX[1],midY,!!(topW&&(topW===m.team_a_id||topW===m.team_b_id)));
+        mkLine(colX[0]+W,y2,colX[1],midY,!!(botW&&(botW===m.team_a_id||botW===m.team_b_id)));
+      }
+      // Final + 연결(SF -> F)
+      if(fi.length){
+        const m=fi[0]; const y=140; const win=!!mrIdx.get(m.id)?.winner_team_id;
+        mkBox(colX[2],y,W,H,`${tn(m.team_a_id)} vs ${tn(m.team_b_id)}`,`#${m.id}`,win);
+        for(let i=0;i<sf.length;i++){
+          const s=sf[i]; const sw=mrIdx.get(s.id)?.winner_team_id; const midYsf=50+i*2*(H+P)+H/2;
+          mkLine(colX[1]+W,midYsf,colX[2],y+H/2,!!(sw&&(sw===m.team_a_id||sw===m.team_b_id)));
+        }
+      }
+    }
+
+    // ===== Events =====
+    document.getElementById("teamFilter").addEventListener("change", renderAll);
+
+    // ===== Bootstrap =====
+    (async ()=>{
+      startPageLoading();
+      try{
+        applyTheme(localStorage.getItem("theme") || "mocha");
+        buildTabs();
+        showTab(localStorage.getItem("activeTab") || "group");
+        await fillTeamCache();
+        await renderAll();
+        subscribeRealtime();
+      } finally { endPageLoading(); }
+    })();
+  </script>
+</body>
+</html>
