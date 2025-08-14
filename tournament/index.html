@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="./manifest.webmanifest" />
 
-  <!-- 개발에선 SW 비활성/캐시청소, 배포에서만 등록 -->
+  <!-- 개발: SW 비활성/캐시청소, 배포: 등록 -->
   <script>
-    const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
+    const isLocal = ["localhost","127.0.0.1"].includes(location.hostname);
     if ("serviceWorker" in navigator) {
       if (!isLocal) {
         window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
@@ -26,40 +26,35 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="./config.js"></script>
 
-  <!-- Pantone Theme (Mocha Mousse 기본) -->
-  <style id="pantone-theme">
+  <!-- Pantone Theme (Classic Blue / Mocha / Peach) -->
+  <style>
     :root {
-      /* Mocha Mousse (Pantone 17-1230) - 근사값 */
-      --brand-25:#fbf7f5; --brand-100:#efe3dc; --brand-200:#e3cfc4; --brand-300:#d2b6a9;
-      --brand-400:#bf9b8e; --brand-500:#b18474; --brand-600:#a47864; --brand-700:#8f6655;
-      --brand-800:#6f4f45; --brand-900:#4f3a32; --brand-contrast:#ffffff;
+      /* 기본: Classic Blue 2020 */
+      --brand-25:#f3f7fb; --brand-100:#e6eef6; --brand-200:#cfe0ee; --brand-300:#b7d0e5;
+      --brand-400:#5a8fbd; --brand-500:#2f6ea2; --brand-600:#0F4C81; --brand-700:#0d416f;
+      --brand-800:#0b365d; --brand-900:#082a47; --brand-contrast:#ffffff;
 
-      /* 상태 색 */
-      --info-100:#e7eef5;   --info-700:#0F4C81; /* Classic Blue */
+      --info-100:#e6eef6;   --info-700:#0F4C81;
       --success-100:#e8f7ef;--success-700:#15803d;
       --danger-100:#fde7eb; --danger-700:#be3455;
 
-      --chip-bg:var(--brand-100); --chip-fg:#3b2f2a;
+      --chip-bg:var(--brand-100); --chip-fg:#0F4C81;
     }
-
-    /* 공용 버튼 */
     .btn-primary{background:var(--brand-600);color:var(--brand-contrast)}
-    .btn-primary:hover{filter:brightness(0.95)}
-    .btn-outline{border:1px solid var(--brand-300);color:var(--brand-800);background:#fff}
+    .btn-primary:hover{filter:brightness(0.96)}
+    .btn-outline{border:1px solid var(--brand-300);background:#fff;color:var(--brand-800)}
     .btn-outline:hover{border-color:var(--brand-400);background:var(--brand-25)}
-
     header{border-color:var(--brand-200)!important}
     .brand-card{border-color:var(--brand-200)}
     .chip{background:var(--chip-bg);color:var(--chip-fg)}
     .chip-info{background:var(--info-100);color:var(--info-700)}
     .chip-success{background:var(--success-100);color:var(--success-700)}
     .chip-danger{background:var(--danger-100);color:var(--danger-700)}
-
     .lock-scroll{overflow:hidden}
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
-  <!-- Page Loading Overlay -->
+  <!-- Page Loading -->
   <div id="pageLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur">
     <div class="flex flex-col items-center gap-3">
       <div class="h-10 w-10 rounded-full border-4 border-slate-300 border-t-slate-700 animate-spin"></div>
@@ -67,7 +62,7 @@
     </div>
   </div>
 
-  <!-- Saving Overlay -->
+  <!-- Saving -->
   <div id="savingOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/30">
     <div class="bg-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
       <div class="h-5 w-5 rounded-full border-2 border-slate-300 border-t-slate-700 animate-spin"></div>
@@ -82,7 +77,6 @@
       <div class="hidden md:flex gap-1" id="topTabs"></div>
     </div>
     <div class="max-w-6xl mx-auto px-3 pb-2">
-      <!-- 대형타이머 링크 제거, 테마셀 추가 -->
       <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
         <select id="teamFilter" class="w-full rounded-lg border-slate-300 text-sm md:text-base">
           <option value="">모든 팀</option>
@@ -91,9 +85,9 @@
                class="w-full rounded-lg border-slate-300 text-sm md:text-base" />
         <a href="./referee.html" class="text-center rounded-lg px-3 py-2 btn-outline text-sm md:text-base">심판 화면</a>
         <select id="themeSelect" class="w-full rounded-lg border-slate-300 text-sm md:text-base">
+          <option value="classic">Classic Blue 2020</option>
           <option value="mocha">Mocha Mousse 2025</option>
           <option value="peach">Peach Fuzz 2024</option>
-          <option value="classic">Classic Blue 2020</option>
         </select>
         <div class="flex gap-2">
           <button id="btnPdf" class="rounded-lg px-3 py-2 btn-outline text-sm md:text-base">PDF</button>
@@ -153,26 +147,24 @@
   </div>
 
   <script>
-    // ===== Small helpers =====
-    const $ = (sel) => document.querySelector(sel);
-    const showEl = (el) => el.classList.remove("hidden");
-    const hideEl = (el) => el.classList.add("hidden");
-    const pageLoadingEl = () => $("#pageLoading");
-    const savingEl = () => $("#savingOverlay");
+    /* ========= Small helpers ========= */
+    const $  = (s) => document.querySelector(s);
+    const $$ = (s) => Array.from(document.querySelectorAll(s));
+    const show = (el) => el.classList.remove("hidden");
+    const hide = (el) => el.classList.add("hidden");
+    const startPage = () => { show($("#pageLoading")); document.body.classList.add("lock-scroll"); };
+    const endPage   = () => { hide($("#pageLoading")); document.body.classList.remove("lock-scroll"); };
+    const startSaving = () => { show($("#savingOverlay")); document.body.classList.add("lock-scroll"); };
+    const endSaving   = () => { hide($("#savingOverlay")); document.body.classList.remove("lock-scroll"); };
 
-    function startPageLoading(){ showEl(pageLoadingEl()); document.body.classList.add("lock-scroll"); }
-    function endPageLoading(){ hideEl(pageLoadingEl()); document.body.classList.remove("lock-scroll"); }
-    function startSaving(){ showEl(savingEl()); document.body.classList.add("lock-scroll"); }
-    function endSaving(){ hideEl(savingEl()); document.body.classList.remove("lock-scroll"); }
-
-    // ===== Theme palettes =====
+    // Themes
     const PALETTES = {
-      mocha:{brand:{25:"#fbf7f5",100:"#efe3dc",200:"#e3cfc4",300:"#d2b6a9",400:"#bf9b8e",500:"#b18474",600:"#a47864",700:"#8f6655",800:"#6f4f45",900:"#4f3a32",contrast:"#ffffff"},info:{bg:"#e7eef5",fg:"#0F4C81"},success:{bg:"#e8f7ef",fg:"#15803d"},danger:{bg:"#fde7eb",fg:"#be3455"},chip:{bg:"#efe3dc",fg:"#3b2f2a"}},
-      peach:{brand:{25:"#fff7f1",100:"#ffe9da",200:"#ffd8c0",300:"#ffc8a8",400:"#ffbe98",500:"#ffb387",600:"#f59f75",700:"#dd8e67",800:"#b97455",900:"#945e46",contrast:"#3b2f2a"},info:{bg:"#e8f0fa",fg:"#0F4C81"},success:{bg:"#e8f7ef",fg:"#15803d"},danger:{bg:"#fde7eb",fg:"#be3455"},chip:{bg:"#ffe9da",fg:"#5a463e"}},
       classic:{brand:{25:"#f3f7fb",100:"#e6eef6",200:"#cfe0ee",300:"#b7d0e5",400:"#5a8fbd",500:"#2f6ea2",600:"#0F4C81",700:"#0d416f",800:"#0b365d",900:"#082a47",contrast:"#ffffff"},info:{bg:"#e6eef6",fg:"#0F4C81"},success:{bg:"#e8f7ef",fg:"#15803d"},danger:{bg:"#fde7eb",fg:"#be3455"},chip:{bg:"#e6eef6",fg:"#0F4C81"}},
+      mocha:{brand:{25:"#fbf7f5",100:"#efe3dc",200:"#e3cfc4",300:"#d2b6a9",400:"#bf9b8e",500:"#b18474",600:"#a47864",700:"#8f6655",800:"#6f4f45",900:"#4f3a32",contrast:"#ffffff"},info:{bg:"#e7eef5",fg:"#0F4C81"},success:{bg:"#e8f7ef",fg:"#15803d"},danger:{bg:"#fde7eb",fg:"#be3455"},chip:{bg:"#efe3dc",fg:"#3b2f2a"}},
+      peach:{brand:{25:"#fff7f1",100:"#ffe9da",200:"#ffd8c0",300:"#ffc8a8",400:"#ffbe98",500:"#ffb387",600:"#f59f75",700:"#dd8e67",800:"#b97455",900:"#945e46",contrast:"#3b2f2a"},info:{bg:"#e8f0fa",fg:"#0F4C81"},success:{bg:"#e8f7ef",fg:"#15803d"},danger:{bg:"#fde7eb",fg:"#be3455"},chip:{bg:"#ffe9da",fg:"#5a463e"}}
     };
-    function applyTheme(name="mocha"){
-      const p = PALETTES[name] || PALETTES.mocha;
+    function applyTheme(name="classic"){
+      const p = PALETTES[name] || PALETTES.classic;
       const s = document.documentElement.style;
       Object.entries(p.brand).forEach(([k,v])=>s.setProperty(`--brand-${k}`,v));
       s.setProperty("--info-100",p.info.bg); s.setProperty("--info-700",p.info.fg);
@@ -180,62 +172,95 @@
       s.setProperty("--danger-100",p.danger.bg); s.setProperty("--danger-700",p.danger.fg);
       s.setProperty("--chip-bg",p.chip.bg); s.setProperty("--chip-fg",p.chip.fg);
       localStorage.setItem("theme", name);
-      const sel = document.getElementById("themeSelect"); if (sel) sel.value = name;
+      const sel = $("#themeSelect"); if (sel) sel.value = name;
     }
-    document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("themeSelect")?.addEventListener("change", (e)=>{ applyTheme(e.target.value); setTimeout(()=>renderAll(),0); });
+    document.addEventListener("DOMContentLoaded",()=>{
+      $("#themeSelect")?.addEventListener("change",e=>{applyTheme(e.target.value); setTimeout(renderAll,0);});
     });
 
-    // ===== Supabase =====
+    /* ========= Supabase ========= */
     const sb = supabase.createClient(window.APP_CONFIG.SUPABASE_URL, window.APP_CONFIG.SUPABASE_ANON_KEY);
-    const teamCache = new Map();
-    const rosterCache = new Map(); // team_id -> [player names]
+    const teamCache   = new Map();  // id -> name
+    const rosterCache = new Map();  // team_id -> [names]
 
-    // ===== Tabs =====
+    /* ========= Tabs ========= */
     const TABS = [
-      { id: "group", label: "경기", icon: "📝" },
-      { id: "standings", label: "순위", icon: "📊" },
-      { id: "bracket", label: "토너", icon: "🏆" },
-      { id: "schedule", label: "일정", icon: "⏰" }
+      { id:"group",     label:"경기",   icon:"📝" },
+      { id:"standings", label:"순위",   icon:"📊" },
+      { id:"bracket",   label:"토너",   icon:"🏆" },
+      { id:"schedule",  label:"일정",   icon:"⏰" },
     ];
-    function buildTabs() {
-      $("#topTabs").innerHTML = TABS.map(
-        (t) => `<button data-tab="${t.id}" class="px-3 py-2 rounded-lg hover:bg-[color:var(--brand-25)]" onclick="showTab('${t.id}')">${t.icon} ${t.label}</button>`
-      ).join("");
-      $("#bottomTabs").innerHTML = TABS.map(
-        (t) => `
-          <button data-tab="${t.id}" class="text-xs flex flex-col items-center justify-center gap-0.5" onclick="showTab('${t.id}')">
-            <div class="text-base leading-none">${t.icon}</div><div>${t.label}</div>
-          </button>`
-      ).join("");
+    function buildTabs(){
+      $("#topTabs").innerHTML = TABS.map(t=>`<button data-tab="${t.id}" class="px-3 py-2 rounded-lg hover:bg-[color:var(--brand-25)]" onclick="showTab('${t.id}')">${t.icon} ${t.label}</button>`).join("");
+      $("#bottomTabs").innerHTML = TABS.map(t=>`
+        <button data-tab="${t.id}" class="text-xs flex flex-col items-center justify-center gap-0.5" onclick="showTab('${t.id}')">
+          <div class="text-base leading-none">${t.icon}</div><div>${t.label}</div>
+        </button>`).join("");
     }
     function showTab(id){
-      for(const t of TABS){ const sec = $("#tab-"+t.id); if (sec) sec.classList.toggle("hidden", t.id!==id); }
+      for(const t of TABS){ const sec=$("#tab-"+t.id); if (sec) sec.classList.toggle("hidden", t.id!==id); }
       localStorage.setItem("activeTab", id);
     }
 
-    // ===== Helpers =====
+    /* ========= Helpers ========= */
     const tn = (id) => teamCache.get(id) || `#${id}`;
     const rn = (id) => (rosterCache.get(id) || []).join(", ");
     const badge = (txt) => `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs chip">${txt}</span>`;
     function statusBadge(m){
       if (m.status === 'live') return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs chip-info">진행중</span>`;
-      if (m.is_final) return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs chip-success">완료</span>`;
+      if (m.is_final)        return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs chip-success">완료</span>`;
       if (['done','ended','finished'].includes(m.status)) return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs chip-danger">종료</span>`;
       return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs chip">대기</span>`;
     }
+    // ── KO 요약용
+    function summarizeSets(sets){
+      let wa=0, wb=0;
+      for (const s of sets||[]) {
+        const a=+s.score_a||0, b=+s.score_b||0;
+        if (a>b) wa++; else if (b>a) wb++;
+      }
+      const list = (sets&&sets.length) ? sets.sort((a,b)=>a.set_no-b.set_no)
+        .map(s=>`${s.score_a}-${s.score_b}`).join(" · ") : "점수 없음";
+      return { wa, wb, list };
+    }
+    function knockoutCard(m, sets){
+      const { wa, wb, list } = summarizeSets(sets);
+      const BO = effectiveBestOf(m);
+      const guessWinnerId = wa>wb ? m.team_a_id : (wb>wa ? m.team_b_id : null);
+      const winnerName = m.winner_id ? tn(m.winner_id) : (guessWinnerId ? tn(guessWinnerId) : "");
+      return `
+        <div class="rounded-2xl border brand-card bg-white p-3 shadow-sm">
+          <div class="flex items-center justify-between gap-3">
+            <div class="font-medium">
+              ${tn(m.team_a_id)} <span class="text-[11px] md:text-xs text-slate-500">(${rn(m.team_a_id)})</span>
+              <span class="text-slate-400 mx-1">vs</span>
+              ${tn(m.team_b_id)} <span class="text-[11px] md:text-xs text-slate-500">(${rn(m.team_b_id)})</span>
+            </div>
+            <div class="shrink-0">${statusBadge(m)}</div>
+          </div>
+          <div class="text-[11px] md:text-xs text-slate-500 mt-1">
+            ${(m.stage||"").toUpperCase()} · BO${BO} · ${m.points_to_win}${m.court_no?` · ${m.court_no}코트`:""}${m.is_final?" · ✅확정":""}
+          </div>
+          <div class="mt-1 text-sm">${list}
+            ${winnerName?`<span class="ml-2 text-[11px] chip-success px-2 py-0.5 rounded">승자: ${winnerName}</span>`:""}
+          </div>
+        </div>`;
+    }
+    // 그룹은 항상 BO1로 표시/저장
+    function effectiveBestOf(m){ return m?.stage === 'group' ? 1 : Math.max(1, Number(m?.best_of || 1)); }
+    function getBOFromDom(mid){ return parseInt(document.getElementById(`m_${mid}`)?.dataset.bo || "1", 10); }
 
-    // ===== Team cache + roster =====
+    // 팀/로스터 캐시 채우기
     async function fillTeamCache(){
       const [teamsRes, rosterRes] = await Promise.all([
         sb.from("teams").select("id,name").order("name"),
         sb.from("team_members").select("team_id, players(name)").order("team_id")
       ]);
-      for (const t of teamsRes.data || []) teamCache.set(t.id, t.name);
-      for (const row of rosterRes.data || []) {
-        const name = row.players?.name || "";
-        if (!rosterCache.has(row.team_id)) rosterCache.set(row.team_id, []);
-        if (name) rosterCache.get(row.team_id).push(name);
+      for(const t of teamsRes.data || []) teamCache.set(t.id, t.name);
+      for(const r of rosterRes.data || []) {
+        const name = r.players?.name || "";
+        if (!rosterCache.has(r.team_id)) rosterCache.set(r.team_id, []);
+        if (name) rosterCache.get(r.team_id).push(name);
       }
       const sel = $("#teamFilter");
       for (const [id, name] of teamCache.entries()) {
@@ -243,10 +268,15 @@
       }
     }
 
-    // ===== Accordion helper =====
-    function accordion(title, innerHtml, open=false){
+    // 아코디언(+ 열림상태 기억)
+    const openState = new Map(); // group_id -> boolean
+    function captureOpenState(){
+      $$('#groupMatches details[data-gid]').forEach(d => openState.set(parseInt(d.dataset.gid,10), d.open));
+    }
+    function accordion(gid, title, innerHtml){
+      const opened = !!openState.get(gid); // 기본 닫힘
       return `
-        <details class="rounded-2xl border brand-card bg-white shadow-sm"${open?" open":""}>
+        <details class="rounded-2xl border brand-card bg-white shadow-sm" data-gid="${gid}" ${opened?'open':''}>
           <summary class="cursor-pointer list-none select-none px-3 py-2 font-semibold flex items-center justify-between">
             <span>${title}</span><span class="text-slate-500 text-sm">열기/닫기</span>
           </summary>
@@ -254,16 +284,16 @@
         </details>`;
     }
 
-    // ===== Match cards (responsive + deuce rule) =====
+    /* ========= Match cards (BO1 UI + 듀스) ========= */
     function setInputs(m){
       const ptw = Number(m.points_to_win || 25);
+      const BO  = effectiveBestOf(m);
       let html = "";
-      for (let i=1;i<=m.best_of;i++){
+      for (let i=1;i<=BO;i++){
         html += `
           <div class="rounded-xl border brand-card bg-[color:var(--brand-25)] p-3">
             <div class="text-[11px] md:text-xs font-medium text-slate-600 mb-2">S${i}</div>
             <div class="grid grid-cols-2 gap-3">
-              <!-- Team A card -->
               <div class="rounded-lg border brand-card bg-white p-3">
                 <div class="text-sm font-semibold mb-2 truncate">${tn(m.team_a_id)}</div>
                 <div class="flex items-center gap-1">
@@ -272,7 +302,6 @@
                   <button type="button" class="px-2 py-1 text-xs md:text-sm rounded border brand-card" onclick="bump(${m.id},${i},+1,0,${ptw})">＋</button>
                 </div>
               </div>
-              <!-- Team B card -->
               <div class="rounded-lg border brand-card bg-white p-3">
                 <div class="text-sm font-semibold mb-2 truncate">${tn(m.team_b_id)}</div>
                 <div class="flex items-center gap-1">
@@ -286,8 +315,6 @@
       }
       return html;
     }
-
-    // 듀스/상한 규칙
     function applyDeuceRule(a,b,ptw){
       a=Math.max(0,Number(a||0)); b=Math.max(0,Number(b||0));
       const mx=Math.max(a,b), mn=Math.min(a,b);
@@ -296,28 +323,24 @@
       return [a,b];
     }
     function clampPair(mid,setNo,ptw){
-      const ia=document.getElementById(`sa_${mid}_${setNo}`);
-      const ib=document.getElementById(`sb_${mid}_${setNo}`);
+      const ia=$("#sa_"+mid+"_"+setNo), ib=$("#sb_"+mid+"_"+setNo);
       if(!ia||!ib) return;
-      const [na,nb]=applyDeuceRule(ia.value,ib.value,ptw);
-      ia.value=na; ib.value=nb;
+      const [na,nb]=applyDeuceRule(ia.value,ib.value,ptw); ia.value=na; ib.value=nb;
     }
     function bump(mid,setNo,da,db,ptw=25){
-      const ia=document.getElementById(`sa_${mid}_${setNo}`);
-      const ib=document.getElementById(`sb_${mid}_${setNo}`);
+      const ia=$("#sa_"+mid+"_"+setNo), ib=$("#sb_"+mid+"_"+setNo);
       if(!ia||!ib) return;
       const a=Math.max(0,Number(ia.value||0)+(da||0));
       const b=Math.max(0,Number(ib.value||0)+(db||0));
-      const [na,nb]=applyDeuceRule(a,b,ptw);
-      ia.value=na; ib.value=nb;
+      const [na,nb]=applyDeuceRule(a,b,ptw); ia.value=na; ib.value=nb;
     }
-
     async function loadSetScores(m){
       const { data:ss } = await sb.from("match_sets").select("set_no,score_a,score_b").eq("match_id", m.id).order("set_no");
-      for(const s of ss||[]){ const ia=$(`#sa_${m.id}_${s.set_no}`); const ib=$(`#sb_${m.id}_${s.set_no}`); if(ia) ia.value=s.score_a; if(ib) ib.value=s.score_b; }
+      for(const s of ss||[]){ const ia=$("#sa_"+m.id+"_"+s.set_no), ib=$("#sb_"+m.id+"_"+s.set_no); if(ia) ia.value=s.score_a; if(ib) ib.value=s.score_b; }
     }
 
     function matchCard(m){
+      const BO = effectiveBestOf(m);
       const head = `
         <div class="flex items-center justify-between gap-3">
           <div class="font-semibold text-sm md:text-base">
@@ -330,24 +353,24 @@
             </span>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            ${m.group_id ? badge("조별") : badge(m.stage?.toUpperCase?.() || "KO")}
+            ${m.group_id ? badge("조별") : badge((m.stage?.toUpperCase?.()||"KO"))}
             ${m.court_no ? badge(m.court_no + "코트") : ""}
             ${statusBadge(m)}
           </div>
         </div>
         <div class="text-[11px] md:text-xs text-slate-500">
-          목표 ${m.points_to_win}${m.win_by ? ` (＋${m.win_by})` : ""}${m.cap ? ` / cap ${m.cap}` : ""}, BO${m.best_of}
+          목표 ${m.points_to_win}${m.win_by ? ` (＋${m.win_by})` : ""}${m.cap ? ` / cap ${m.cap}` : ""}, BO${BO}
           ${m.scheduled_at ? ` · ${new Date(m.scheduled_at).toLocaleString()}` : ""}
         </div>`;
       const body = `
         <div class="mt-3 space-y-3">${setInputs(m)}</div>
         <div class="mt-3 grid grid-cols-2 gap-2">
           <button type="button" class="rounded px-3 py-2 btn-outline text-xs md:text-sm"
-                  onclick="quickWin(${m.id}, 'A', ${m.best_of}, ${Number(m.points_to_win||25)})">
+                  onclick="quickWin(${m.id}, 'A', ${BO}, ${Number(m.points_to_win||25)})">
             ${tn(m.team_a_id)} 승리(자동 ${Number(m.points_to_win||25)})
           </button>
           <button type="button" class="rounded px-3 py-2 btn-outline text-xs md:text-sm"
-                  onclick="quickWin(${m.id}, 'B', ${m.best_of}, ${Number(m.points_to_win||25)})">
+                  onclick="quickWin(${m.id}, 'B', ${BO}, ${Number(m.points_to_win||25)})">
             ${tn(m.team_b_id)} 승리(자동 ${Number(m.points_to_win||25)})
           </button>
         </div>
@@ -355,20 +378,21 @@
           <input id="pin_${m.id}" type="password" placeholder="팀 PIN(선택)"
                  class="rounded border brand-card px-2 py-1 text-xs w-24 md:text-sm md:w-28" />
           <button type="button" class="rounded px-3 py-2 btn-primary"
-                  onclick="save(event, ${m.id}, ${m.best_of}, this)">저장</button>
+                  onclick="save(event, ${m.id}, ${BO}, this)">저장</button>
         </div>`;
       setTimeout(()=>loadSetScores(m),0);
-      return `<div class="rounded-2xl border brand-card bg-white p-3 shadow-sm" id="m_${m.id}">${head}${body}</div>`;
+      return `<div class="rounded-2xl border brand-card bg-white p-3 shadow-sm" id="m_${m.id}" data-bo="${BO}">${head}${body}</div>`;
     }
 
     function firstEditableSet(mid, bestOf){
-      for(let s=1;s<=bestOf;s++){ const ia=$(`#sa_${mid}_${s}`); const ib=$(`#sb_${mid}_${s}`); if(ia&&ib&&(!ia.value&&!ib.value)) return s; }
+      const BO = bestOf || getBOFromDom(mid);
+      for(let s=1;s<=BO;s++){ const ia=$("#sa_"+mid+"_"+s), ib=$("#sb_"+mid+"_"+s); if(ia&&ib&&(!ia.value&&!ib.value)) return s; }
       return 1;
     }
     function quickWin(mid, which, bestOf, ptw=25){
-      const s = firstEditableSet(mid,bestOf);
-      const ia = document.getElementById(`sa_${mid}_${s}`);
-      const ib = document.getElementById(`sb_${mid}_${s}`);
+      const BO = bestOf || getBOFromDom(mid);
+      const s = firstEditableSet(mid, BO);
+      const ia=$("#sa_"+mid+"_"+s), ib=$("#sb_"+mid+"_"+s);
       if(!ia||!ib) return;
       if(which==='A'){ ia.value=ptw; ib.value=Math.min(Number(ib.value||0), ptw-1); }
       else{ ib.value=ptw; ia.value=Math.min(Number(ia.value||0), ptw-1); }
@@ -379,8 +403,14 @@
       const link = `${location.origin}${location.pathname}#m_${m.id}`;
       return `
         <div class="rounded-xl border brand-card bg-white p-3 shadow-sm">
-          <div class="font-medium">${tn(m.team_a_id)} <span class="mx-1">vs</span> ${tn(m.team_b_id)}</div>
-          <div class="text-xs text-slate-500 mt-1">BO${m.best_of} · ${m.points_to_win}${m.court_no ? ` · ${m.court_no}코트` : ""} ${m.is_final ? "· ✅완료" : ""}</div>
+          <div class="font-medium">
+            ${tn(m.team_a_id)} <span class="text-[11px] md:text-xs text-slate-500">(${rn(m.team_a_id)})</span>
+            <span class="mx-1 text-slate-400">vs</span>
+            ${tn(m.team_b_id)} <span class="text-[11px] md:text-xs text-slate-500">(${rn(m.team_b_id)})</span>
+          </div>
+          <div class="text-xs text-slate-500 mt-1">
+            BO${effectiveBestOf(m)} · ${m.points_to_win}${m.court_no?` · ${m.court_no}코트`:""} ${m.is_final?"· ✅완료":""}
+          </div>
           <div class="mt-2 flex gap-2">
             <a href="#group" onclick="showTab('group'); setTimeout(()=>document.getElementById('m_'+${m.id})?.scrollIntoView({behavior:'smooth'}), 50)" class="inline-block underline">점수 입력</a>
             <button type="button" class="ml-auto text-sm rounded px-2 btn-outline" onclick="openQR('${link}')">QR</button>
@@ -388,49 +418,148 @@
         </div>`;
     }
 
-    // ===== Data fetch & render =====
+    /* ========= Data fetch & client-side standings fallback ========= */
     async function fetchState(){
       const teamId = parseInt($("#teamFilter").value || "0", 10) || null;
-      const { data: groups } = await sb.from("groups").select("*").order("name");
-      let q = sb.from("matches").select("*").order("stage").order("group_id").order("id");
-      if (teamId) q = q.or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`);
-      const { data: matches } = await q;
+
+      const { data: groups }   = await sb.from("groups").select("*").order("name");
+      const { data: gteams }   = await sb.from("group_teams").select("group_id,team_id").order("group_id");
+      let mq = sb.from("matches").select("*").order("stage").order("group_id").order("id");
+      if (teamId) mq = mq.or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`);
+      const { data: matches }  = await mq;
+      const { data: msets }    = await sb.from("match_sets").select("match_id,set_no,score_a,score_b");
+
+      // 서버 순위 뷰
       const { data: vstats } = await sb.from("v_group_ranked").select("*").order("group_name").order("group_rank");
+
+      // 일정 & 결과
       const { data: schedule } = await sb.from("v_schedule").select("*");
       const { data: mresults } = await sb.from("v_match_results").select("*");
-      return { groups, matches, vstats, schedule, mresults, teamId };
+
+      return { groups, gteams, matches, msets, vstats, schedule, mresults, teamId };
     }
 
+    function buildStandingsFallback({groups, gteams, matches, msets}){
+      // 그룹/팀 초기화
+      const gName = new Map((groups||[]).map(g=>[g.id, g.name]));
+      const inGroup = new Map(); // gid -> Set(team_id)
+      for (const gt of gteams||[]){
+        if(!inGroup.has(gt.group_id)) inGroup.set(gt.group_id,new Set());
+        inGroup.get(gt.group_id).add(gt.team_id);
+      }
+
+      const byMatch = new Map(); // mid -> sets[]
+      for(const s of msets||[]){
+        if(!byMatch.has(s.match_id)) byMatch.set(s.match_id, []);
+        byMatch.get(s.match_id).push(s);
+      }
+
+      const stats = new Map(); // gid -> tid -> stat
+      function ensure(gid, tid){
+        if(!stats.has(gid)) stats.set(gid,new Map());
+        if(!stats.get(gid).has(tid)) stats.get(gid).set(tid, { team_id:tid, win:0, loss:0, set_diff:0, point_diff:0, pts_for:0 });
+        return stats.get(gid).get(tid);
+      }
+
+      for(const m of (matches||[])){
+        if(m.stage!=='group' || !m.group_id) continue;
+        const sets = byMatch.get(m.id)||[];
+        if(!sets.length) continue; // 점수 미입력
+        let swA=0, swB=0, pfA=0, pfB=0;
+        for(const s of sets){
+          if(s.score_a==null || s.score_b==null) continue;
+          pfA+=Number(s.score_a)||0; pfB+=Number(s.score_b)||0;
+          if(s.score_a > s.score_b) swA++; else if(s.score_b > s.score_a) swB++;
+        }
+        if(swA===0 && swB===0 && pfA===0 && pfB===0) continue;
+
+        const a = ensure(m.group_id, m.team_a_id);
+        const b = ensure(m.group_id, m.team_b_id);
+
+        a.set_diff += (swA - swB);
+        b.set_diff += (swB - swA);
+        a.point_diff += (pfA - pfB);
+        b.point_diff += (pfB - pfA);
+        a.pts_for += pfA; b.pts_for += pfB;
+
+        if (swA > swB){ a.win++; b.loss++; }
+        else if (swB > swA){ b.win++; a.loss++; }
+        // 동점이면 무시(미확정)
+      }
+
+      // 출력 형태(v_group_ranked 유사)
+      const rows = [];
+      for(const [gid, tset] of stats){
+        const name = gName.get(gid) || "?";
+        // 그룹 소속 팀이 있는데 전혀 경기 없으면 0행도 만들어줌
+        const members = Array.from(inGroup.get(gid)||[]);
+        const present  = new Set(tset.keys());
+        for(const tid of members){ if(!present.has(tid)) tset.set(tid, { team_id:tid, win:0, loss:0, set_diff:0, point_diff:0, pts_for:0 }); }
+
+        // 정렬: 승 → 세트득실 → 점수득실 → 다득점
+        const sorted = Array.from(tset.values()).sort((x,y)=>
+          y.win - x.win || y.set_diff - x.set_diff || y.point_diff - x.point_diff || y.pts_for - x.pts_for
+        );
+        sorted.forEach((st,idx)=>{
+          rows.push({
+            group_name: name,
+            group_rank: idx+1,
+            team_id: st.team_id,
+            team_name: tn(st.team_id),
+            win: st.win, loss: st.loss,
+            set_diff: st.set_diff, point_diff: st.point_diff, pts_for: st.pts_for,
+            h2h_win_pct: 0
+          });
+        });
+      }
+      return rows;
+    }
+
+    /* ========= Render ========= */
     async function renderAll(){
-      const { groups, matches, vstats, schedule, mresults, teamId } = await fetchState();
+      // 현재 열림 상태 보존
+      captureOpenState();
+
+      const { groups, gteams, matches, msets, vstats, schedule, mresults, teamId } = await fetchState();
 
       // Group matches
       let gmHtml = "";
+      const gmRender = (g, list) => `<div class="grid grid-cols-1 min-[600px]:grid-cols-2 gap-3">${list.map(m=>matchCard(m)).join("")}</div>`;
       if (!teamId) {
-        let firstOpenDone = false;
         for (const g of groups || []) {
-          const gm = (matches || []).filter((m) => m.stage === "group" && m.group_id === g.id);
+          const gm = (matches || []).filter(m => m.stage === "group" && m.group_id === g.id);
           if (!gm.length) continue;
-          const inner = `<div class="grid grid-cols-1 min-[600px]:grid-cols-2 gap-3">${gm.map((m)=>matchCard(m)).join("")}</div>`;
-          gmHtml += accordion(`조 ${g.name}`, inner, !firstOpenDone);
-          firstOpenDone = true;
+          gmHtml += accordion(g.id, `조 ${g.name}`, gmRender(g, gm)); // 기본 닫힘 + 상태 유지
         }
       } else {
         for (const g of groups || []) {
-          const gm = (matches || []).filter((m) => m.stage === "group" && m.group_id === g.id);
+          const gm = (matches || []).filter(m => m.stage === "group" && m.group_id === g.id);
           if (!gm.length) continue;
-          gmHtml += `<h3 class="text-base font-semibold mb-2">조 ${g.name}</h3>`;
-          gmHtml += `<div class="grid grid-cols-1 min-[600px]:grid-cols-2 gap-3">${gm.map((m)=>matchCard(m)).join("")}</div>`;
+          gmHtml += `<h3 class="text-base font-semibold mb-2">조 ${g.name}</h3>` + gmRender(g, gm);
         }
       }
+
+      // ⬇️ 토너먼트(8강/4강/결승)도 점수 입력 카드로 렌더링
+      const ko = (matches || []).filter(m => m.stage !== 'group');
+      if (ko.length) {
+        gmHtml += `
+          <div class="mt-4">
+            <div class="text-base md:text-lg font-semibold mb-2">토너먼트 경기</div>
+            <div class="grid grid-cols-1 min-[600px]:grid-cols-2 gap-3">
+              ${ko.map(m => matchCard(m)).join("")}
+            </div>
+          </div>`;
+      }
+
       $("#groupMatches").innerHTML = gmHtml || `<div class="text-slate-500">경기 없음</div>`;
 
-      // Standings
-      let st = "";
-      const gnames = [...new Set((vstats || []).map((v) => v.group_name))];
+      // Standings (서버뷰 없으면 클라이언트 계산으로 대체) + KO 결과
+      let rows = vstats && vstats.length ? vstats : buildStandingsFallback({groups, gteams, matches, msets});
+      const gnames = [...new Set((rows || []).map(v => v.group_name))];
+      let stHtml = "";
       for (const g of gnames) {
-        const rows = (vstats || []).filter((v) => v.group_name === g);
-        st += `
+        const rws = (rows || []).filter(v => v.group_name === g);
+        stHtml += `
           <div class="rounded-2xl overflow-hidden border brand-card bg-white shadow-sm">
             <div class="px-3 py-2 font-semibold bg-[color:var(--brand-25)] border-b brand-card">조 ${g}</div>
             <table class="w-full text-xs md:text-sm">
@@ -441,110 +570,151 @@
                 </tr>
               </thead>
               <tbody>
-                ${rows.map((r)=>`
+                ${rws.map(r=>`
                   <tr class="odd:bg-[color:var(--brand-25)]">
                     <td class="p-2 text-center">${r.group_rank}</td>
-                    <td class="p-2">${r.team_name}</td>
+                    <td class="p-2">
+                      ${r.team_name}
+                      ${ (()=>{ const m = rn(r.team_id); return m ? `<span class="text-[11px] md:text-xs text-slate-500">(${m})</span>` : '' })() }
+                    </td>
                     <td class="p-2 text-center">${r.win}</td>
                     <td class="p-2 text-center">${r.loss}</td>
                     <td class="p-2 text-center">${r.set_diff}</td>
                     <td class="p-2 text-center">${r.point_diff}</td>
                     <td class="p-2 text-center">${r.pts_for}</td>
-                    <td class="p-2 text-center">${(r.h2h_win_pct * 100).toFixed(0)}%</td>
+                    <td class="p-2 text-center">${(r.h2h_win_pct*100||0).toFixed(0)}%</td>
                   </tr>`).join("")}
               </tbody>
             </table>
           </div>`;
       }
-      $("#standings").innerHTML = st || `<div class="text-slate-500">데이터 없음</div>`;
 
-      // Knockout sections
-      const renderSec = (selector, label) => {
-        const arr = (matches || []).filter((m)=>m.stage===label);
-        const host = document.querySelector(selector);
-        host.innerHTML = arr.length ? arr.map((m)=>cardMini(m)).join("") : `<div class="text-slate-500">경기 없음</div>`;
+      // ── KO 결과 카드
+      const setsByMatch = new Map((msets||[]).map(s => [s.match_id, []]));
+      for (const s of msets||[]) { (setsByMatch.get(s.match_id) || setsByMatch.set(s.match_id,[]).get(s.match_id)).push(s); }
+      const renderKO = (stage) => {
+        const arr = (matches||[]).filter(m => m.stage === stage);
+        if (!arr.length) return `<div class="text-slate-500">경기 없음</div>`;
+        return arr.map(m => knockoutCard(m, (setsByMatch.get(m.id)||[]))).join("");
       };
-      renderSec("#qf", "qf"); renderSec("#sf", "sf"); renderSec("#fin", "final");
 
-      // Bracket SVG
+      const hasKO = (matches||[]).some(m => ["qf","sf","final"].includes(m.stage));
+      const koHtml = hasKO ? `
+        <div class="mt-6">
+          <h2 class="text-base md:text-lg font-semibold mb-2">토너먼트 결과</h2>
+          <div class="grid md:grid-cols-2 gap-3">
+            <div>
+              <h3 class="font-semibold mb-2">8강</h3>
+              <div class="grid grid-cols-1 min-[600px]:grid-cols-2 gap-3">${renderKO("qf")}</div>
+            </div>
+            <div>
+              <h3 class="font-semibold mb-2">4강</h3>
+              <div class="grid grid-cols-1 min-[600px]:grid-cols-2 gap-3">${renderKO("sf")}</div>
+              <h3 class="font-semibold mt-4 mb-2">결승</h3>
+              <div class="grid grid-cols-1 gap-3">${renderKO("final")}</div>
+            </div>
+          </div>
+        </div>` : "";
+
+      $("#standings").innerHTML =
+        (stHtml || `<div class="text-slate-500">조별 순위 데이터 없음</div>`) + koHtml;
+
+      // Knockout mini cards (브래킷 섹션 아래의 요약 카드)
+      const renderSec = (sel, stage) => {
+        const arr = (matches||[]).filter(m=>m.stage===stage);
+        const host = document.querySelector(sel);
+        host.innerHTML = arr.length ? arr.map(m=>cardMini(m)).join("") : `<div class="text-slate-500">경기 없음</div>`;
+      };
+      renderSec("#qf","qf"); renderSec("#sf","sf"); renderSec("#fin","final");
+
+      // Bracket
       drawBracket(matches||[], mresults||[]);
 
       // Schedule
-      $("#schedule").innerHTML = (schedule || []).length
-        ? (schedule || []).map((s) => {
-            const t = s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : "-";
-            return `
-              <div class="rounded-2xl border brand-card bg-white p-3 shadow-sm">
-                <div class="text-[11px] md:text-xs text-slate-500">${t} · 코트 ${s.court_no || "-"}</div>
-                <div class="mt-1 text-[11px] md:text-xs text-slate-500">${s.stage.toUpperCase()} ${s.is_final ? "· ✅" : ""}</div>
-                <div class="mt-1 font-medium">${s.team_a} vs ${s.team_b}</div>
-              </div>`;
+      $("#schedule").innerHTML = (schedule||[]).length
+        ? (schedule||[]).map(s=>{
+            const t=s.scheduled_at?new Date(s.scheduled_at).toLocaleString():"-";
+            return `<div class="rounded-2xl border brand-card bg-white p-3 shadow-sm">
+              <div class="text-[11px] md:text-xs text-slate-500">${t} · 코트 ${s.court_no||"-"}</div>
+              <div class="mt-1 text-[11px] md:text-xs text-slate-500">${s.stage.toUpperCase()} ${s.is_final?"· ✅":""}</div>
+              <div class="mt-1 font-medium">${s.team_a} vs ${s.team_b}</div>
+            </div>`;
           }).join("")
         : `<div class="text-slate-500">일정 없음</div>`;
     }
 
-    // ===== Score save (async, no reload) =====
+    /* ========= Save (async, no reload) ========= */
     async function save(e, mid, bestOf, btnEl){
       e?.preventDefault?.(); e?.stopPropagation?.();
       const pin = $("#quickPin").value || document.getElementById(`pin_${mid}`)?.value || null;
-      const actor = (() => {
-        const tid = $("#teamFilter").value;
-        return tid ? `team:${teamCache.get(parseInt(tid, 10))}` : "team";
-      })();
+      const actor = (()=>{ const tid=$("#teamFilter").value; return tid?`team:${teamCache.get(parseInt(tid,10))}`:"team"; })();
+      const BO = bestOf || getBOFromDom(mid);
 
-      const origHTML = btnEl?.innerHTML;
-      if(btnEl){ btnEl.disabled=true; btnEl.innerHTML=`<span class="inline-block h-4 w-4 border-2 border-white/50 border-t-white rounded-full animate-spin mr-2 align-[-2px]"></span>저장 중…`; }
+      const orig = btnEl?.innerHTML;
+      if(btnEl){
+        btnEl.disabled = true;
+        btnEl.innerHTML = `<span class="inline-block h-4 w-4 border-2 border-white/50 border-t-white rounded-full animate-spin mr-2 align-[-2px]"></span>저장 중…`;
+      }
       startSaving();
 
       try{
-        const calls=[];
-        for(let s=1;s<=bestOf;s++){
-          const sa = parseInt(document.getElementById(`sa_${mid}_${s}`)?.value || "0", 10);
-          const sbv = parseInt(document.getElementById(`sb_${mid}_${s}`)?.value || "0", 10);
-          calls.push(sb.rpc("upsert_score_by_pin",{ p_match_id:mid, p_set_no:s, p_score_a:sa, p_score_b:sbv, p_pin:pin, p_actor:actor }));
+        const calls = [];
+        for(let s=1; s<=BO; s++){
+          const scoreA = parseInt(document.getElementById(`sa_${mid}_${s}`)?.value || "0", 10);
+          const scoreB = parseInt(document.getElementById(`sb_${mid}_${s}`)?.value || "0", 10);
+
+          calls.push(
+            sb.rpc("upsert_score_by_pin", {
+              p_match_id: mid,
+              p_set_no:   s,
+              p_score_a:  scoreA,
+              p_score_b:  scoreB,
+              p_pin:      pin,
+              p_actor:    actor
+            })
+          );
         }
+
         const res = await Promise.allSettled(calls);
-        if(res.some((r)=>r.status==="rejected" || r.value?.error)){ alert("일부 저장 실패. PIN/네트워크를 확인하세요."); }
-        else { await renderAll(); }
+        if (res.some(r => r.status === "rejected" || r.value?.error)) {
+          alert("일부 저장 실패. PIN/네트워크를 확인하세요.");
+        } else {
+          await renderAll(); // 아코디언 상태 유지
+        }
       } finally {
         endSaving();
-        if(btnEl){ btnEl.disabled=false; btnEl.innerHTML=origHTML; }
+        if(btnEl){ btnEl.disabled=false; btnEl.innerHTML=orig; }
       }
-    }
+    }    
 
-    // ===== Realtime =====
+    /* ========= Realtime ========= */
     function subscribeRealtime(){
       sb.channel("pub")
-        .on("postgres_changes",{event:"*",schema:"public",table:"matches"},renderAll)
-        .on("postgres_changes",{event:"*",schema:"public",table:"match_sets"},renderAll)
+        .on("postgres_changes",{event:"*",schema:"public",table:"matches"}, renderAll)
+        .on("postgres_changes",{event:"*",schema:"public",table:"match_sets"}, renderAll)
         .subscribe();
     }
 
-    // ===== QR & PDF =====
-    function openQR(url){
-      const box=document.getElementById("qrBox");
-      box.innerHTML=""; new QRCode(box,{ text:url, width:220, height:220 });
-      document.getElementById("qrModal").classList.remove("hidden");
-    }
-    function closeQR(){ document.getElementById("qrModal").classList.add("hidden"); }
-    document.getElementById("btnShare").addEventListener("click",()=>{
+    /* ========= QR & PDF ========= */
+    function openQR(url){ const box=$("#qrBox"); box.innerHTML=""; new QRCode(box,{text:url,width:220,height:220}); $("#qrModal").classList.remove("hidden"); }
+    function closeQR(){ $("#qrModal").classList.add("hidden"); }
+    $("#btnShare").addEventListener("click", ()=>{
       const url=location.href;
-      if(navigator.share) navigator.share({ title:"배드민턴 토너먼트", url });
+      if(navigator.share) navigator.share({title:"배드민턴 토너먼트", url});
       else { navigator.clipboard.writeText(url); alert("링크를 복사했습니다."); }
     });
-    document.getElementById("btnPdf").addEventListener("click", async ()=>{
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit:"pt", format:"a4" });
-      let y = 36;
+    $("#btnPdf").addEventListener("click", async ()=>{
+      const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:"pt", format:"a4" });
+      let y=36;
       doc.setFontSize(16); doc.text("Badminton Tournament Report",36,y); y+=22;
       doc.setFontSize(10); doc.text(new Date().toLocaleString(),36,y); y+=18;
       const { data:vstats } = await sb.from("v_group_ranked").select("*").order("group_name").order("group_rank");
-      const groups = [...new Set((vstats||[]).map(v=>v.group_name))];
+      const groups=[...new Set((vstats||[]).map(v=>v.group_name))];
       for(const g of groups){
         doc.setFontSize(12); doc.text(`Group ${g}`,36,y); y+=16;
         doc.setFontSize(9);
         for(const r of (vstats||[]).filter(v=>v.group_name===g)){
-          const line = `${r.group_rank}. ${r.team_name}  W:${r.win} L:${r.loss}  SetΔ:${r.set_diff}  PtsΔ:${r.point_diff}`;
+          const line=`${r.group_rank}. ${r.team_name}  W:${r.win} L:${r.loss}  SetΔ:${r.set_diff}  PtsΔ:${r.point_diff}`;
           doc.text(line,36,y); y+=12; if(y>780){ doc.addPage(); y=36; }
         }
         y+=6;
@@ -552,16 +722,15 @@
       doc.save("tournament-report.pdf");
     });
 
-    // ===== Bracket (winner highlight & active lines) =====
+    /* ========= Bracket ========= */
     function drawBracket(matches, mresults){
-      const svg = document.getElementById("bracketSvg");
-      const NS = "http://www.w3.org/2000/svg";
+      const svg=document.getElementById("bracketSvg"); const NS="http://www.w3.org/2000/svg";
       while(svg.firstChild) svg.removeChild(svg.firstChild);
       const W=280,H=64,P=32; const colX=[20,360,700];
       const qf=matches.filter(m=>m.stage==="qf").sort((a,b)=>a.id-b.id);
       const sf=matches.filter(m=>m.stage==="sf").sort((a,b)=>a.id-b.id);
       const fi=matches.filter(m=>m.stage==="final").sort((a,b)=>a.id-b.id);
-      const mrIdx = new Map((mresults||[]).map(x=>[x.match_id,x]));
+      const mrIdx=new Map((mresults||[]).map(x=>[x.match_id,x]));
 
       const mkBox=(x,y,w,h,main,sub,win)=>{
         const g=document.createElementNS(NS,"g");
@@ -587,12 +756,10 @@
         l.setAttribute("stroke-width", active ? "3" : "1"); svg.appendChild(l);
       };
 
-      // QF
       for(let i=0;i<qf.length;i++){
         const m=qf[i]; const y=20+i*(H+P); const win=!!mrIdx.get(m.id)?.winner_team_id;
-        mkBox(colX[0],y,W,H,`${tn(m.team_a_id)} vs ${tn(m.team_b_id)}`,`#${m.id} · BO${m.best_of} · ${m.points_to_win}`,win);
+        mkBox(colX[0],y,W,H,`${tn(m.team_a_id)} vs ${tn(m.team_b_id)}`,`#${m.id} · BO${effectiveBestOf(m)} · ${m.points_to_win}`,win);
       }
-      // SF + 연결(QF -> SF)
       for(let i=0;i<sf.length;i++){
         const m=sf[i]; const y=50+i*2*(H+P); const win=!!mrIdx.get(m.id)?.winner_team_id;
         mkBox(colX[1],y,W,H,`${tn(m.team_a_id)} vs ${tn(m.team_b_id)}`,`#${m.id}`,win);
@@ -602,7 +769,6 @@
         mkLine(colX[0]+W,y1,colX[1],midY,!!(topW&&(topW===m.team_a_id||topW===m.team_b_id)));
         mkLine(colX[0]+W,y2,colX[1],midY,!!(botW&&(botW===m.team_a_id||botW===m.team_b_id)));
       }
-      // Final + 연결(SF -> F)
       if(fi.length){
         const m=fi[0]; const y=140; const win=!!mrIdx.get(m.id)?.winner_team_id;
         mkBox(colX[2],y,W,H,`${tn(m.team_a_id)} vs ${tn(m.team_b_id)}`,`#${m.id}`,win);
@@ -613,20 +779,19 @@
       }
     }
 
-    // ===== Events =====
+    /* ========= Events & Bootstrap ========= */
     document.getElementById("teamFilter").addEventListener("change", renderAll);
 
-    // ===== Bootstrap =====
     (async ()=>{
-      startPageLoading();
+      startPage();
       try{
-        applyTheme(localStorage.getItem("theme") || "mocha");
+        applyTheme(localStorage.getItem("theme") || "classic");
         buildTabs();
         showTab(localStorage.getItem("activeTab") || "group");
         await fillTeamCache();
         await renderAll();
         subscribeRealtime();
-      } finally { endPageLoading(); }
+      } finally { endPage(); }
     })();
   </script>
 </body>

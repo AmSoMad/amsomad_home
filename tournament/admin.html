@@ -26,11 +26,8 @@
   <!-- Pantone Theme -->
   <style>
     :root{
-      --brand-25:#fbf7f5;--brand-100:#efe3dc;--brand-200:#e3cfc4;--brand-300:#d2b6a9;
-      --brand-400:#bf9b8e;--brand-500:#b18474;--brand-600:#a47864;--brand-700:#8f6655;
-      --brand-800:#6f4f45;--brand-900:#4f3a32;--brand-contrast:#ffffff;
-      --info-100:#e7eef5;--info-700:#0F4C81;--success-100:#e8f7ef;--success-700:#15803d;
-      --danger-100:#fde7eb;--danger-700:#be3455;
+      --brand-25:#fbf7f5;--brand-100:#efe3dc;--brand-200:#e3cfc4;--brand-300:#d2b6a9;--brand-400:#bf9b8e;--brand-500:#b18474;--brand-600:#a47864;--brand-700:#8f6655;--brand-800:#6f4f45;--brand-900:#4f3a32;--brand-contrast:#ffffff;
+      --info-100:#e7eef5;--info-700:#0F4C81;--success-100:#e8f7ef;--success-700:#15803d;--danger-100:#fde7eb;--danger-700:#be3455;
       --chip-bg:var(--brand-100);--chip-fg:#3b2f2a;
     }
     .btn-primary{background:var(--brand-600);color:var(--brand-contrast)}
@@ -38,11 +35,37 @@
     .btn-outline{border:1px solid var(--brand-300);background:#fff;color:var(--brand-800)}
     .btn-outline:hover{border-color:var(--brand-400);background:var(--brand-25)}
     .brand-card{border-color:var(--brand-200)}
+    .lock-scroll{overflow:hidden}
     .chip{background:var(--chip-bg);color:var(--chip-fg)}
     .chip-info{background:var(--info-100);color:var(--info-700)}
     .chip-success{background:var(--success-100);color:var(--success-700)}
     .chip-danger{background:var(--danger-100);color:var(--danger-700)}
-    .lock-scroll{overflow:hidden}
+    .icon-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--brand-300);border-radius:.5rem}
+    .icon-btn:hover{background:var(--brand-25)}
+    .scorebox{width:52px}
+    .scoregroup{display:flex;align-items:center;gap:.25rem}
+    .state-dot{width:8px;height:8px;border-radius:9999px;display:inline-block;margin-right:.4rem}
+    /* === Admin 테이블 레이아웃 보정 === */
+    .admin-table { table-layout: fixed; }
+    .admin-table th, .admin-table td { vertical-align: top; }
+
+    /* 고정 컬럼 폭 */
+    .col-id{width:56px}
+    .col-stage{width:84px}
+    .col-group{width:92px}
+    .col-ab{width:260px}
+    .col-sets{width:260px}
+    .col-state{width:220px}
+    .col-court{width:140px}
+    .col-actions{width:200px}
+
+    @media (max-width:1140px){
+      .col-actions{width:160px}
+      .col-state{width:200px}
+    }
+
+    /* 점수 인풋 폭 살짝 줄여 테이블에 맞춤 */
+    .scorebox{width:48px}
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -75,7 +98,23 @@
 
   <!-- Main -->
   <main class="max-w-6xl mx-auto px-3 py-4 space-y-4">
-    <!-- 환경 모드 스위치 -->
+
+    <!-- 팀/선수 편집 -->
+    <section class="rounded-2xl border brand-card bg-white shadow-sm">
+      <div class="px-3 py-2 border-b brand-card flex items-center justify-between">
+        <h2 class="font-semibold">팀 / 선수 편집</h2>
+        <div class="flex items-center gap-2">
+          <input id="teamSearch" placeholder="검색(팀/선수)" class="rounded border brand-card px-2 py-1 text-sm w-44">
+          <button id="btnNewTeam" class="rounded px-3 py-2 text-sm btn-primary">새 팀 추가</button>
+          <button id="btnBulk" class="rounded px-3 py-2 text-sm btn-outline">대량 등록</button>
+        </div>
+      </div>
+      <div class="p-3">
+        <div id="teamsEditor" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+    </section>
+
+    <!-- 환경 모드 -->
     <section class="rounded-2xl border brand-card bg-white shadow-sm">
       <div class="px-3 py-2 border-b brand-card">
         <h2 class="font-semibold">환경 모드</h2>
@@ -83,110 +122,83 @@
       <div class="p-3 flex flex-col gap-2">
         <p class="text-sm text-slate-600">개발 모드: 클라이언트 CRUD 허용 · 운영 모드: 읽기만, 쓰기는 보안 RPC만 허용</p>
         <div class="flex flex-wrap items-center gap-2">
-          <input id="adminSecret" type="password" placeholder="관리자 비밀키"
-                 class="w-56 rounded border brand-card px-2 py-1 text-sm" />
-          <button id="btnModeDev"  class="rounded px-3 py-2 text-sm btn-outline">개발 모드 전환</button>
+          <input id="adminSecret" type="password" placeholder="관리자 비밀키" class="w-56 rounded border brand-card px-2 py-1 text-sm"/>
+          <button id="btnModeDev" class="rounded px-3 py-2 text-sm btn-outline">개발 모드 전환</button>
           <button id="btnModeProd" class="rounded px-3 py-2 text-sm btn-primary">운영 모드 전환</button>
         </div>
       </div>
     </section>
 
-    <!-- 데모 데이터 시드 (RPC) -->
-    <section class="rounded-2xl border brand-card bg-white shadow-sm">
-      <div class="px-3 py-2 border-b brand-card flex items-center justify-between">
-        <h2 class="font-semibold">데모 데이터 주입</h2>
-      </div>
-      <div class="p-3 flex flex-wrap items-center gap-2">
-        <input id="seedTeamCount" type="number" min="1" value="20"
-               class="w-24 rounded border brand-card px-2 py-1 text-sm" />
-        <span class="text-sm text-slate-600">팀 수 (각 팀 2명: 남/여)</span>
-        <button id="btnSeedDemo" class="ml-auto rounded px-3 py-2 text-sm btn-outline">
-          데모 데이터 주입 (RPC)
-        </button>
-      </div>
-    </section>
-
-    <!-- Danger Zone: 전체 초기화 -->
+    <!-- 위험 구역 -->
     <section class="rounded-2xl border brand-card bg-white shadow-sm">
       <div class="px-3 py-2 border-b brand-card flex items-center justify-between">
         <h2 class="font-semibold text-rose-700">위험: 전체 초기화</h2>
       </div>
       <div class="p-3 flex flex-col gap-2">
-        <p class="text-sm text-slate-600">
-          모든 경기/세트/그룹/팀/선수 데이터를 삭제하고 시퀀스를 초기화합니다. 되돌릴 수 없습니다.
-        </p>
+        <p class="text-sm text-slate-600">모든 경기/세트/그룹/팀/선수 데이터를 삭제하고 시퀀스를 초기화합니다. 되돌릴 수 없습니다.</p>
         <div class="flex items-center gap-2">
-          <input id="hardResetKey" type="password" placeholder="관리자 비밀키"
-                 class="w-56 rounded border brand-card px-2 py-1 text-sm" />
-          <button id="btnHardReset"
-                  class="rounded px-3 py-2 text-sm"
-                  style="background:var(--danger-100);color:var(--danger-700);border:1px solid var(--danger-700)">
-            전체 초기화
-          </button>
+          <input id="hardResetKey" type="password" placeholder="관리자 비밀키" class="w-56 rounded border brand-card px-2 py-1 text-sm"/>
+          <button id="btnHardReset" class="rounded px-3 py-2 text-sm" style="background:var(--danger-100);color:var(--danger-700);border:1px solid var(--danger-700)">전체 초기화</button>
         </div>
       </div>
     </section>
 
-    <!-- Teams -->
-    <section class="rounded-2xl border brand-card bg-white shadow-sm">
-      <div class="px-3 py-2 border-b brand-card flex items-center justify-between">
-        <h2 class="font-semibold">팀 / 선수</h2>
-        <div class="text-sm text-slate-600">시드 후 자동 갱신됩니다.</div>
-      </div>
-      <div class="p-3">
-        <div id="teamsList" class="text-sm text-slate-600">불러오는 중…</div>
-      </div>
-    </section>
-
-    <!-- Groups -->
+    <!-- 조 구성 -->
     <section class="rounded-2xl border brand-card bg-white shadow-sm">
       <div class="px-3 py-2 border-b brand-card flex items-center justify-between">
         <h2 class="font-semibold">조 구성</h2>
         <div class="flex gap-2">
-          <input id="teamsPerGroup" type="number" min="3" max="6" value="4"
-                 class="w-20 rounded border brand-card px-2 py-1 text-sm" />
+          <input id="teamsPerGroup" type="number" min="3" max="6" value="4" class="w-20 rounded border brand-card px-2 py-1 text-sm"/>
           <button id="btnAutoGroups" class="rounded px-3 py-2 btn-primary text-sm">자동(A..F) 배정</button>
           <button id="btnWipeGroups" class="rounded px-3 py-2 text-sm btn-outline">그룹/소속 삭제</button>
         </div>
       </div>
-      <div class="p-3">
-        <div id="groupsList" class="text-sm text-slate-600">불러오는 중…</div>
-      </div>
+      <div class="p-3"><div id="groupsList" class="text-sm text-slate-600">불러오는 중…</div></div>
     </section>
 
-    <!-- Matches -->
+    <!-- 경기 생성/관리 -->
     <section class="rounded-2xl border brand-card bg-white shadow-sm">
       <div class="px-3 py-2 border-b brand-card flex items-center justify-between">
         <h2 class="font-semibold">경기 생성/관리</h2>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <button id="btnRR" class="rounded px-3 py-2 btn-primary text-sm">조별 리그 생성</button>
           <button id="btnKO" class="rounded px-3 py-2 btn-outline text-sm">8강/4강/결승 생성</button>
           <button id="btnWipeMatches" class="rounded px-3 py-2 text-sm btn-outline">모든 경기/세트 삭제</button>
         </div>
       </div>
+
       <div class="p-3">
+        <!-- 공통 파라미터 + 일괄 버튼 -->
         <div class="flex flex-wrap items-center gap-2 mb-2">
-          <input id="defaultPtw" type="number" min="11" value="25"
-                 class="w-24 rounded border brand-card px-2 py-1 text-sm" />
-          <span class="text-sm text-slate-600">Points To Win</span>
-          <input id="defaultBo" type="number" min="1" value="3"
-                 class="w-20 rounded border brand-card px-2 py-1 text-sm" />
-          <span class="text-sm text-slate-600">Best Of</span>
-          <input id="defaultWinBy" type="number" min="0" value="1"
-                 class="w-20 rounded border brand-card px-2 py-1 text-sm" />
-          <span class="text-sm text-slate-600">Win By</span>
+          <input id="defaultPtw" type="number" min="11" value="25" class="w-24 rounded border brand-card px-2 py-1 text-sm"/><span class="text-sm text-slate-600">Points To Win</span>
+          <input id="defaultBo" type="number" min="1" value="1" class="w-20 rounded border brand-card px-2 py-1 text-sm"/><span class="text-sm text-slate-600">Best Of</span>
+          <input id="defaultWinBy" type="number" min="0" value="1" class="w-20 rounded border brand-card px-2 py-1 text-sm"/><span class="text-sm text-slate-600">Win By</span>
+          <input id="koAdvPerGroup" type="number" min="1" value="1" class="w-20 rounded border brand-card px-2 py-1 text-sm"/><span class="text-sm text-slate-600">조당 진출</span>
+          <input id="manualSeeds" type="text" placeholder="수동 시드(팀ID 콤마)" class="w-60 rounded border brand-card px-2 py-1 text-sm" />
+          <button id="btnBulkDone" class="px-3 py-2 rounded btn-outline text-sm">일괄 done 처리</button>
+          <button id="btnBulkFinalize" class="px-3 py-2 rounded btn-outline text-sm">일괄 완료 처리</button>
         </div>
 
-        <div id="matchesTblWrap" class="overflow-x-auto rounded border brand-card">
-          <table class="min-w-[720px] w-full text-sm">
+        <!-- 모바일: 카드 목록 -->
+        <div id="matchesCards" class="md:hidden space-y-3"></div>
+
+        <!-- 데스크톱: 테이블 -->
+        <div id="matchesTblWrap" class="hidden md:block overflow-x-auto rounded border brand-card">
+          <table class="admin-table min-w-[1080px] w-full text-sm">
+            <colgroup>
+              <col class="col-id"/><col class="col-stage"/><col class="col-group"/>
+              <col class="col-ab"/><col class="col-sets"/><col class="col-state"/>
+              <col class="col-court"/><col class="col-actions"/>
+            </colgroup>
             <thead>
               <tr class="bg-[color:var(--brand-25)]">
                 <th class="p-2 text-left">ID</th>
                 <th class="p-2 text-left">Stage</th>
                 <th class="p-2 text-left">Group</th>
                 <th class="p-2 text-left">A vs B</th>
+                <th class="p-2 text-left">세트/점수</th>
+                <th class="p-2 text-left">상태</th>
                 <th class="p-2 text-left">Court</th>
-                <th class="p-2 text-left">Status</th>
                 <th class="p-2 text-left">액션</th>
               </tr>
             </thead>
@@ -197,49 +209,149 @@
     </section>
   </main>
 
+  <!-- 대량등록 모달 -->
+  <div id="bulkModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
+    <div class="bg-white rounded-2xl w-[min(720px,95vw)] p-4">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-semibold">대량 등록</h3>
+        <button class="icon-btn" onclick="closeBulk()">✕</button>
+      </div>
+      <p class="text-sm text-slate-600 mb-2">형식: <span class="font-mono">팀명, 선수1, 선수2, ...</span> (한 줄 = 한 팀)</p>
+      <textarea id="bulkText" rows="8" class="w-full rounded border brand-card p-2 font-mono text-sm" placeholder="팀A, 홍길동, 김영희&#10;팀B, 박민수, 이영희"></textarea>
+      <div class="mt-3 flex items-center gap-2">
+        <button class="btn-outline rounded px-3 py-2 text-sm" onclick="bulkPreview()">미리보기</button>
+        <button class="btn-primary rounded px-3 py-2 text-sm" onclick="bulkSave()">저장</button>
+        <div id="bulkStatus" class="text-sm text-slate-600 ml-auto"></div>
+      </div>
+      <div id="bulkPreviewBox" class="mt-3 text-sm"></div>
+    </div>
+  </div>
+
   <script>
-    // ===== Helpers UI =====
-    const $ = (s) => document.querySelector(s);
-    const show = (el) => el.classList.remove("hidden");
-    const hide = (el) => el.classList.add("hidden");
-    const startPage = () => { show($("#pageLoading")); document.body.classList.add("lock-scroll"); };
-    const endPage = () => { hide($("#pageLoading")); document.body.classList.remove("lock-scroll"); };
-    const startSaving = () => { show($("#savingOverlay")); document.body.classList.add("lock-scroll"); };
-    const endSaving = () => { hide($("#savingOverlay")); document.body.classList.remove("lock-scroll"); };
+    // ===== Helpers =====
+    const $ = (s)=>document.querySelector(s);
+    const show = (el)=>el.classList.remove("hidden");
+    const hide = (el)=>el.classList.add("hidden");
+    const startPage = ()=>{ show($("#pageLoading")); document.body.classList.add("lock-scroll"); };
+    const endPage   = ()=>{ hide($("#pageLoading")); document.body.classList.remove("lock-scroll"); };
+    const startSaving=()=>{ show($("#savingOverlay")); document.body.classList.add("lock-scroll"); };
+    const endSaving  =()=>{ hide($("#savingOverlay")); document.body.classList.remove("lock-scroll"); };
 
-    // ===== Supabase =====
-    const sb = supabase.createClient(
-      window.APP_CONFIG.SUPABASE_URL,
-      window.APP_CONFIG.SUPABASE_ANON_KEY
-    );
+    const sb = supabase.createClient(window.APP_CONFIG.SUPABASE_URL, window.APP_CONFIG.SUPABASE_ANON_KEY);
 
-    // ===== Loaders =====
+    // ===== TEAM EDITOR (원본 유지, 일부 함수 생략 없이 포함) =====
+    let TEAM_CACHE=[]; let NEW_COUNTER=0;
+    function normalizeTeams(rows){
+      return (rows||[]).map(t=>{
+        const members=(t.team_members||[]).map(tm=>({id:tm.players?.id||tm.player_id,name:tm.players?.name||""}));
+        return {id:t.id,name:t.name,pin:t.pin||"",members};
+      });
+    }
     async function loadTeams(){
-      const { data: teams, error } = await sb.from("teams").select("*").order("name");
-      if (error) { $("#teamsList").innerHTML = `<div class="text-rose-600 text-sm">${error.message}</div>`; return; }
-      if (!teams?.length) { $("#teamsList").innerHTML = `<div class="text-slate-500">팀이 없습니다.</div>`; return; }
-      $("#teamsList").innerHTML = `
-        <div class="grid grid-cols-1 min-[560px]:grid-cols-2 gap-2">
-          ${teams.map(t => `
-            <div class="rounded border brand-card p-2 bg-[color:var(--brand-25)]">
-              <div class="font-medium">${t.name} <span class="text-xs text-slate-500">#${t.id}</span></div>
-            </div>`).join("")}
+      const {data,error}=await sb.from("teams").select("id,name,pin, team_members(player_id, players(id,name))").order("name",{ascending:true});
+      if(error){ $("#teamsEditor").innerHTML=`<div class="text-rose-600 text-sm">${error.message}</div>`; return; }
+      TEAM_CACHE=normalizeTeams(data); renderTeamEditor();
+    }
+    function memberRow(teamDomId,pid,name){ return `
+      <div class="flex items-center gap-2 roster-row" data-pid="${pid||""}">
+        <input class="player-name flex-1 rounded border brand-card px-2 py-1 bg-white" placeholder="선수 이름" value="${name||""}">
+        <button class="icon-btn" title="삭제" onclick="removeMemberRow(this)">🗑</button>
+      </div>`; }
+    function teamCard(t){
+      const tid=t.id??`new-${++NEW_COUNTER}`;
+      const membersHtml=(t.members?.length?t.members:[{id:"",name:""},{id:"",name:""}]).map(m=>memberRow(tid,m.id,m.name)).join("");
+      return `
+        <div class="rounded-2xl border brand-card p-3 bg-[color:var(--brand-25)]" data-team="${tid}">
+          <div class="flex items-center gap-2">
+            <input class="team-name flex-1 rounded border brand-card px-2 py-1 text-sm bg-white" placeholder="팀명" value="${t.name||""}">
+            <input class="team-pin w-28 rounded border brand-card px-2 py-1 text-sm bg-white" placeholder="PIN(선택)" value="${t.pin||""}">
+            ${t.id?`<span class="text-xs text-slate-500">#${t.id}</span>`:`<span class="text-xs chip px-2 py-0.5 rounded">새 팀</span>`}
+          </div>
+          <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2" id="roster_${tid}">${membersHtml}</div>
+          <div class="mt-2 flex items-center gap-2">
+            <button class="icon-btn" title="선수 추가" onclick="addMemberRow('${tid}')">＋</button>
+            <div class="ml-auto flex items-center gap-2">
+              <button class="btn-outline rounded px-3 py-2 text-sm" onclick="saveTeam('${tid}')">저장</button>
+              ${t.id?`<button class="rounded px-3 py-2 text-sm" style="border:1px solid var(--danger-700);color:var(--danger-700)" onclick="deleteTeam(${t.id})">삭제</button>`:""}
+            </div>
+          </div>
         </div>`;
     }
+    function renderTeamEditor(filter=""){
+      const q=filter.trim().toLowerCase();
+      const list=q?TEAM_CACHE.filter(t=>(t.name||"").toLowerCase().includes(q)||(t.members||[]).some(m=>(m.name||"").toLowerCase().includes(q))):TEAM_CACHE;
+      $("#teamsEditor").innerHTML=list.length?list.map(teamCard).join(""):`<div class="text-slate-500">팀이 없습니다. '새 팀 추가'를 눌러 등록하세요.</div>`;
+    }
+    function addMemberRow(teamDomId){ const host=document.getElementById(`roster_${teamDomId}`); host.insertAdjacentHTML("beforeend",memberRow(teamDomId,"","")); }
+    function removeMemberRow(btn){ btn.closest(".roster-row")?.remove(); }
+    function newTeam(){ const t={id:null,name:"",pin:"",members:[{id:"",name:""},{id:"",name:""}]}; TEAM_CACHE.unshift(t); renderTeamEditor($("#teamSearch").value||""); }
+    async function saveTeam(teamDomId){
+      const card=document.querySelector(`[data-team="${teamDomId}"]`); if(!card) return;
+      const name=card.querySelector(".team-name").value.trim(); const pin=card.querySelector(".team-pin").value.trim()||null;
+      if(!name){ alert("팀명을 입력하세요."); return; }
+      let dbId=/^\d+$/.test(teamDomId)?parseInt(teamDomId,10):null;
+      startSaving();
+      try{
+        if(!dbId){ const {data:ins,error:errT}=await sb.from("teams").insert({name,pin}).select("id").single(); if(errT) throw errT; dbId=ins.id; }
+        else{ const {error:errU}=await sb.from("teams").update({name,pin}).eq("id",dbId); if(errU) throw errU; }
+        const rows=[...card.querySelectorAll(".roster-row")];
+        for(const row of rows){
+          const pid=row.getAttribute("data-pid"); const pname=row.querySelector(".player-name").value.trim();
+          if(pid){ if(!pname){ await sb.from("team_members").delete().eq("team_id",dbId).eq("player_id",pid); } else { await sb.from("players").update({name:pname}).eq("id",pid); } }
+          else if(pname){ const {data:pIns,error:pErr}=await sb.from("players").insert({name:pname}).select("id").single(); if(pErr) throw pErr; await sb.from("team_members").insert({team_id:dbId,player_id:pIns.id}); }
+        }
+        await loadTeams(); alert("저장 완료");
+      }catch(e){ console.error(e); alert("저장 실패: "+(e.message||e)); }
+      finally{ endSaving(); }
+    }
+    async function deleteTeam(id){ if(!confirm("정말 이 팀을 삭제할까요? (경기 기록이 있으면 삭제되지 않을 수 있습니다)")) return; startSaving(); try{ await sb.from("teams").delete().eq("id",id); await loadTeams(); } finally{ endSaving(); } }
+    $("#teamSearch").addEventListener("input",(e)=>renderTeamEditor(e.target.value));
+    window.addMemberRow=addMemberRow; window.removeMemberRow=removeMemberRow; window.saveTeam=saveTeam; window.deleteTeam=deleteTeam;
+    document.getElementById("btnNewTeam").addEventListener("click",newTeam);
 
+    // ===== Bulk insert =====
+    function openBulk(){ $("#bulkText").value=""; $("#bulkPreviewBox").innerHTML=""; $("#bulkStatus").textContent=""; show($("#bulkModal")); }
+    function closeBulk(){ hide($("#bulkModal")); }
+    function parseBulk(text){ return text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(line=>{ const tokens=line.split(/[,|\t]/).map(s=>s.trim()).filter(Boolean); const team=tokens.shift()||""; return {team,members:tokens}; }).filter(x=>x.team); }
+    function bulkPreview(){ const parsed=parseBulk($("#bulkText").value||""); $("#bulkPreviewBox").innerHTML=parsed.length?`<div class="space-y-1">${parsed.map(p=>`<div>• <b>${p.team}</b> — ${p.members.join(", ")||"(선수 없음)"}</div>`).join("")}</div>`:`<div class="text-slate-500">미리볼 내용이 없습니다.</div>`; }
+    async function bulkSave(){
+      const parsed=parseBulk($("#bulkText").value||""); if(!parsed.length){ alert("붙여넣은 내용이 없습니다."); return; }
+      startSaving();
+      try{
+        let ok=0;
+        for(const item of parsed){
+          const {data:t,error:te}=await sb.from("teams").insert({name:item.team}).select("id").single(); if(te) throw te;
+          for(const nm of item.members){ const {data:p,error:pe}=await sb.from("players").insert({name:nm}).select("id").single(); if(pe) throw pe; await sb.from("team_members").insert({team_id:t.id,player_id:p.id}); }
+          ok++; $("#bulkStatus").textContent=`${ok}/${parsed.length} 저장…`;
+        }
+        await loadTeams(); $("#bulkStatus").textContent="완료"; alert("대량 등록 완료"); closeBulk();
+      }catch(e){ console.error(e); alert("대량 등록 실패: "+(e.message||e)); }
+      finally{ endSaving(); }
+    }
+    document.getElementById("btnBulk").addEventListener("click",openBulk);
+    window.closeBulk=closeBulk; window.bulkPreview=bulkPreview; window.bulkSave=bulkSave;
+
+    // ===== Groups =====
     async function loadGroups(){
       try{
-        const { data: groups, error:gErr } = await sb.from("groups").select("*").order("name");
-        if (gErr) throw gErr;
-        if (!groups?.length){ $("#groupsList").innerHTML = `<div class="text-slate-500">그룹이 없습니다.</div>`; return; }
+        const {data:groups,error:gErr}=await sb.from("groups").select("*").order("name");
+        if(gErr) throw gErr;
+        if(!groups?.length){
+          $("#groupsList").innerHTML=`<div class="text-slate-500">그룹이 없습니다.</div>`;
+          return;
+        }
 
-        const { data: gt, error:gtErr } = await sb
-          .from("group_teams").select("group_id, team_id, teams(name)").order("group_id");
-        if (gtErr) throw gtErr;
+        // 팀원까지 함께 가져옴
+        const {data:gt, error:gtErr} = await sb
+          .from("group_teams")
+          .select("group_id, team_id, teams(id,name, team_members(players(name)))")
+          .order("group_id");
+        if(gtErr) throw gtErr;
 
-        const byG = new Map(); for (const g of groups) byG.set(g.id, []);
-        for (const r of gt || []) byG.get(r.group_id)?.push(r);
+        const byG=new Map(); for(const g of groups) byG.set(g.id,[]);
+        for(const r of gt||[]) byG.get(r.group_id)?.push(r);
 
+        // 팀명 + 팀원(콤마 구분) 출력
         $("#groupsList").innerHTML = `
           <div class="space-y-2">
             ${groups.map(g => `
@@ -247,224 +359,526 @@
                 <div class="px-3 py-2 bg-[color:var(--brand-25)] font-semibold">
                   조 ${g.name} <span class="text-xs text-slate-500">#${g.id}</span>
                 </div>
-                <div class="p-3 grid grid-cols-2 min-[560px]:grid-cols-4 gap-2">
-                  ${(byG.get(g.id) || []).map(x =>
-                    `<div class="rounded border brand-card px-2 py-1 bg-white text-sm">${x.teams?.name || "#"+x.team_id}</div>`
-                  ).join("")}
+                <div class="p-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                  ${(byG.get(g.id) || []).map(x => {
+                    const name = x.teams?.name || ("#"+x.team_id);
+                    const roster = (x.teams?.team_members || [])
+                      .map(tm => tm.players?.name)
+                      .filter(Boolean)
+                      .join(", ");
+                    return `
+                      <div class="rounded border brand-card bg-white p-2">
+                        <div class="font-medium truncate" title="${name}">${name}</div>
+                        <div class="text-[11px] text-slate-500" title="${roster}">${roster || "&nbsp;"}</div>
+                      </div>`;
+                  }).join("")}
                 </div>
               </div>
             `).join("")}
           </div>`;
       }catch(e){
         console.warn(e);
-        $("#groupsList").innerHTML =
-          `<div class="text-rose-600 text-sm">group_teams/ groups 조회 실패: ${e.message || e}</div>`;
+        $("#groupsList").innerHTML=`<div class="text-rose-600 text-sm">group_teams/groups 조회 실패: ${e.message||e}</div>`;
       }
     }
 
-    async function loadMatches(){
-      const { data: matches, error:mErr } = await sb
-        .from("matches").select("*, groups(name)").order("stage").order("group_id").order("id");
-      if (mErr){ $("#matchesTbody").innerHTML = `<tr><td colspan="7" class="p-3 text-rose-600 text-sm">${mErr.message}</td></tr>`; return; }
-      if (!matches?.length){ $("#matchesTbody").innerHTML = `<tr><td colspan="7" class="p-3 text-slate-500">경기가 없습니다.</td></tr>`; return; }
-      const { data: teams } = await sb.from("teams").select("id,name");
-      const tmap = new Map((teams||[]).map(t=>[t.id,t.name]));
-      $("#matchesTbody").innerHTML = matches.map(m => `
-        <tr>
-          <td class="p-2">#${m.id}</td>
-          <td class="p-2">${(m.stage||"").toUpperCase()}</td>
-          <td class="p-2">${m.group_id ? ("조 " + (m.groups?.name||m.group_id)) : "-"}</td>
-          <td class="p-2">${tmap.get(m.team_a_id)||("#"+m.team_a_id)} vs ${tmap.get(m.team_b_id)||("#"+m.team_b_id)}</td>
-          <td class="p-2">
-            <input type="number" value="${m.court_no||""}" class="w-16 rounded border brand-card px-2 py-1 text-sm"
-                   onchange="updateCourt(${m.id}, this.value)" />
-          </td>
-          <td class="p-2">
-            <select class="rounded border brand-card px-2 py-1 text-sm"
-                    onchange="updateStatus(${m.id}, this.value)">
-              ${["pending","live","done"].map(s => `<option value="${s}" ${m.status===s?"selected":""}>${s}</option>`).join("")}
-            </select>
-          </td>
-          <td class="p-2">
-            <button class="px-2 py-1 rounded btn-outline text-xs" onclick="markFinal(${m.id}, true)">완료</button>
-            <button class="ml-1 px-2 py-1 rounded btn-outline text-xs" onclick="markFinal(${m.id}, false)">해제</button>
-            <button class="ml-1 px-2 py-1 rounded btn-primary text-xs" onclick="openInRef(${m.id})">심판열기</button>
-          </td>
-        </tr>`).join("");
-    }
-
-    // ===== Actions: Groups / Matches =====
+    function rrPairs(ids){ const p=[]; for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++) p.push([ids[i],ids[j]]); return p; }
     async function autoGroups(){
-      const per = Math.max(3, Math.min(6, parseInt($("#teamsPerGroup").value||"4",10)));
+      const per=Math.max(3,Math.min(6,parseInt($("#teamsPerGroup").value||"4",10)));
       startSaving();
       try{
-        const { data: teams } = await sb.from("teams").select("id").order("id");
-        if (!teams?.length) { alert("팀이 없습니다."); return; }
+        const {data:teams}=await sb.from("teams").select("id").order("id");
+        if(!teams?.length){ alert("팀이 없습니다."); return; }
         await sb.from("group_teams").delete().neq("group_id",-1);
         await sb.from("groups").delete().neq("id",-1);
-        const gcount = Math.ceil(teams.length / per);
-        const names = Array.from({length:gcount},(_,i)=>String.fromCharCode(65+i)); // A..Z
-        const { data: insGroups } = await sb.from("groups").insert(names.map(n=>({ name:n }))).select("*");
-        let idx = 0, gmap = insGroups.reduce((a,g)=>{a[g.name]=g.id;return a;},{});
-        let rows = [];
-        for (const t of teams){
-          const gName = names[idx % gcount];
-          rows.push({ group_id: gmap[gName], team_id: t.id });
-          idx++;
-        }
-        if (rows.length) await sb.from("group_teams").insert(rows);
-      } finally { endSaving(); await loadGroups(); }
+        const gcount=Math.ceil(teams.length/per);
+        const names=Array.from({length:gcount},(_,i)=>String.fromCharCode(65+i));
+        const {data:insGroups}=await sb.from("groups").insert(names.map(n=>({name:n}))).select("*");
+        let idx=0, gmap=insGroups.reduce((a,g)=>{a[g.name]=g.id; return a;},{}), rows=[];
+        for(const t of teams){ const gName=names[idx%gcount]; rows.push({group_id:gmap[gName],team_id:t.id}); idx++; }
+        if(rows.length) await sb.from("group_teams").insert(rows);
+      }finally{ endSaving(); await loadGroups(); }
     }
     async function wipeGroups(){
-      if (!confirm("그룹과 소속을 모두 삭제합니까?")) return;
-      startSaving();
-      try{
-        await sb.from("group_teams").delete().neq("group_id",-1);
-        await sb.from("groups").delete().neq("id",-1);
-      } finally { endSaving(); await loadGroups(); }
-    }
-    function rrPairs(ids){ const p=[]; for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++) p.push([ids[i],ids[j]]); return p; }
-    async function createGroupRoundRobin(){
-      const ptw = parseInt($("#defaultPtw").value||"25",10);
-      const bo  = parseInt($("#defaultBo").value||"3",10);
-      const wb  = parseInt($("#defaultWinBy").value||"1",10);
-      startSaving();
-      try{
-        const { data: groups } = await sb.from("groups").select("*").order("name");
-        if (!groups?.length){ alert("그룹이 없습니다."); return; }
-        const { data: gt } = await sb.from("group_teams").select("group_id, team_id").order("group_id");
-        const by = new Map(); for(const g of groups) by.set(g.id, []);
-        for(const r of gt||[]) by.get(r.group_id).push(r.team_id);
-        let rows = [];
-        for(const g of groups){
-          const ids = by.get(g.id); if(!ids || ids.length < 3) continue;
-          for(const [a,b] of rrPairs(ids)){
-            rows.push({ stage:"group", group_id:g.id, team_a_id:a, team_b_id:b,
-                        best_of:bo, points_to_win:ptw, win_by:wb, cap:null,  });
-          }
-        }
-        if (rows.length) await sb.from("matches").insert(rows);
-      } finally { endSaving(); await loadMatches(); }
-    }
-    async function createKnockoutFromStandings(){
-      const ptw = parseInt($("#defaultPtw").value||"25",10);
-      const bo  = parseInt($("#defaultBo").value||"3",10);
-      const wb  = parseInt($("#defaultWinBy").value||"1",10);
-      startSaving();
-      try{
-        const { data: ranks } = await sb.from("v_group_ranked")
-          .select("team_id, group_name, group_rank, team_name")
-          .lte("group_rank",2).order("group_rank").order("team_name");
-        if (!ranks?.length){ alert("순위 데이터가 없습니다."); return; }
-        const seeds = ranks.slice(0,8).map(r=>r.team_id);
-        const pairs = [[0,7],[3,4],[1,6],[2,5]];
-        let qfRows = [];
-        for(const [i,j] of pairs){
-          if (seeds[i] && seeds[j]) {
-            qfRows.push({ stage:"qf", team_a_id:seeds[i], team_b_id:seeds[j],
-                          best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending" });
-          }
-        }
-        if (qfRows.length) await sb.from("matches").insert(qfRows);
-        await sb.from("matches").insert([
-          { stage:"sf",   best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending" },
-          { stage:"sf",   best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending" },
-          { stage:"final",best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending" },
-        ]);
-      } finally { endSaving(); await loadMatches(); }
-    }
-    async function wipeMatches(){
-      if (!confirm("모든 경기 및 세트 점수를 삭제합니까?")) return;
-      startSaving();
-      try{
-        await sb.from("match_sets").delete().neq("match_id",-1);
-        await sb.from("matches").delete().neq("id",-1);
-      } finally { endSaving(); await loadMatches(); }
+      if(!confirm("그룹과 소속을 모두 삭제합니까?")) return;
+      startSaving(); try{ await sb.from("group_teams").delete().neq("group_id",-1); await sb.from("groups").delete().neq("id",-1); }
+      finally{ endSaving(); await loadGroups(); }
     }
 
-    // ===== Row actions =====
-    async function updateCourt(mid, val){ await sb.from("matches").update({ court_no: (val? parseInt(val,10): null) }).eq("id", mid); }
-    async function updateStatus(mid, status){ await sb.from("matches").update({ status }).eq("id", mid); }
-    async function markFinal(mid, flag){ await sb.from("matches").update({ is_final: !!flag }).eq("id", mid); }
-    function openInRef(mid){ location.href = `./referee.html?match=${mid}`; }
-    window.updateCourt = updateCourt;
-    window.updateStatus = updateStatus;
-    window.markFinal   = markFinal;
-    window.openInRef   = openInRef;
+    // ===== Matches: 점수편집/상태/부전승 =====
+    function needSetsToWin(bo){ return Math.floor(bo/2)+1; }
+    function summarizeState(m, sets){
+      const bo = Math.max(1, Number(m.best_of||1));
+      let wa=0, wb=0;
+      for(const s of sets){ const a=+s.score_a||0, b=+s.score_b||0; if(a===0&&b===0) continue; if(a>b) wa++; else if(b>a) wb++; }
+      const need = needSetsToWin(bo);
+      let winner_id=null, state='pending', chip='chip';
+      if(wa+wb===0){ state='대기'; chip='chip'; }
+      else if(wa>=need || wb>=need){
+        winner_id = (wa>wb)? m.team_a_id : m.team_b_id;
+        state = m.is_final ? '확정' : '완료';
+        chip = m.is_final ? 'chip-success' : 'chip-danger';
+      } else {
+        state='진행'; chip='chip-info';
+      }
+      const text = `${wa}-${wb}(세트)${winner_id?` · ${winner_id===m.team_a_id?'A':'B'}팀 우승`:""}`;
+      return {wa,wb,need,winner_id,state,chip,text};
+    }
 
-    // ===== Danger: 전체 초기화 (RPC) =====
-    async function hardReset(){
-      const key = document.getElementById("hardResetKey").value.trim() ||
-                  document.getElementById("adminSecret").value.trim();
-      if (!key) { alert("비밀키를 입력하세요."); return; }
-      if (!confirm("정말 전체 삭제/초기화 하시겠습니까? 되돌릴 수 없습니다.")) return;
+    function setInputsInline(m, msets){
+      const bo=Math.max(1,Number(m.best_of||1));
+      const ptw=Number(m.points_to_win||25);
+      const byNo = new Map((msets||[]).map(s=>[s.set_no,s]));
+      let html="";
+      for(let i=1;i<=bo;i++){
+        const a = byNo.get(i)?.score_a ?? "";
+        const b = byNo.get(i)?.score_b ?? "";
+        html += `
+          <div class="flex items-center gap-1">
+            <span class="text-xs text-slate-500">S${i}</span>
+            <input class="scorebox rounded border brand-card px-1 py-1 text-center" id="sa_${m.id}_${i}" value="${a}">
+            <span>-</span>
+            <input class="scorebox rounded border brand-card px-1 py-1 text-center" id="sb_${m.id}_${i}" value="${b}">
+          </div>`;
+      }
+      return `<div class="flex flex-wrap items-center gap-2" data-ptw="${ptw}" data-bo="${bo}">${html}</div>`;
+    }
+
+    function rowStateChip(obj){
+      const dot = obj.state==='진행' ? '#0F4C81'
+                : obj.state==='확정' ? '#15803d'
+                : obj.state==='완료' ? '#be3455' : '#94a3b8';
+      const color = obj.chip;
+      return `
+        <div class="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-2 leading-5">
+          <span class="state-dot" style="background:${dot}"></span>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] ${color}">${obj.state}</span>
+          <span class="text-[11px] text-slate-500 break-words">${obj.text}</span>
+        </div>`;
+    }
+
+    async function saveScores(mid){
+      const tr = document.querySelector(`tr[data-match-id="${mid}"]`);
+      const bo = parseInt(tr?.dataset.bo || "1", 10);
+      const ptw = parseInt(tr?.dataset.ptw || "25", 10);
+
+      // 수집
+      const sets=[];
+      for(let i=1;i<=bo;i++){
+        const a = document.getElementById(`sa_${mid}_${i}`)?.value?.trim();
+        const b = document.getElementById(`sb_${mid}_${i}`)?.value?.trim();
+        if(a!=="" && b!==""){
+          const ai = Math.max(0, parseInt(a,10)||0);
+          const bi = Math.max(0, parseInt(b,10)||0);
+          sets.push({set_no:i, score_a:ai, score_b:bi});
+        }
+      }
+
       startSaving();
       try{
-        const { error } = await sb.rpc("admin_reset_all", { p_secret: key });
-        if (error) { console.error(error); alert("실패: " + (error.message || "권한/비밀키를 확인하세요.")); return; }
-        await loadTeams(); await loadGroups(); await loadMatches();
-        alert("초기화 완료!");
+        // 세트 전량 재기록
+        await sb.from("match_sets").delete().eq("match_id", mid);
+        if(sets.length){
+          await sb.from("match_sets").insert(sets.map(s=>({match_id:mid, ...s})));
+        }
+
+        // 상태/승자 자동 판정
+        const { data:mrow } = await sb.from("matches").select("*").eq("id",mid).single();
+        const summary = summarizeState(mrow||{best_of:bo,team_a_id:null,team_b_id:null,is_final:false}, sets);
+        await sb.from("matches").update({
+          status: (sets.length===0 ? "pending" : (summary.winner_id ? "done" : "live")),
+          winner_id: summary.winner_id
+        }).eq("id", mid);
+
+        await loadMatches();
       } finally { endSaving(); }
     }
 
-    // ===== Mode switch (RPC) =====
-    async function switchMode(mode){
-      const key = document.getElementById("adminSecret").value.trim() ||
-                  document.getElementById("hardResetKey").value.trim();
-      if (!key){ alert("관리자 비밀키를 입력하세요."); return; }
-      if (!confirm(`정말 '${mode}' 모드로 전환할까요?`)) return;
+    async function clearScores(mid){
       startSaving();
       try{
-        const { data, error } = await sb.rpc("admin_set_mode", { p_mode: mode, p_secret: key });
-        if (error){ console.error(error); alert("실패: " + (error.message||"")); return; }
+        await sb.from("match_sets").delete().eq("match_id", mid);
+        await sb.from("matches").update({ status:"pending", winner_id: null }).eq("id", mid);
+        await loadMatches();
+      } finally { endSaving(); }
+    }
+
+    async function walkover(mid, which){
+      const tr = document.querySelector(`tr[data-match-id="${mid}"]`);
+      const ptw = parseInt(tr?.dataset.ptw || "25", 10);
+      const bo  = parseInt(tr?.dataset.bo  || "1", 10);
+      // BO1 기준 1세트만 기록(BO>1이어도 승자 판정 가능)
+      const a = (which==='A') ? ptw : 0;
+      const b = (which==='B') ? ptw : 0;
+      startSaving();
+      try{
+        await sb.from("match_sets").delete().eq("match_id", mid);
+        await sb.from("match_sets").insert([{ match_id: mid, set_no:1, score_a:a, score_b:b }]);
+        await sb.from("matches").update({ status:"done", winner_id: (which==='A') ? (await teamIdsOf(mid)).a : (await teamIdsOf(mid)).b }).eq("id", mid);
+        await loadMatches();
+      } finally { endSaving(); }
+    }
+    async function teamIdsOf(mid){
+      const {data}=await sb.from("matches").select("team_a_id,team_b_id").eq("id",mid).single();
+      return {a:data?.team_a_id, b:data?.team_b_id};
+    }
+
+    // 기존 보조 버튼들
+    function getVisibleMatchIds(){ const rows=document.querySelectorAll("tbody tr[data-match-id]"); const ids=[]; rows.forEach(tr=>ids.push(+tr.dataset.matchId)); return ids; }
+    async function bulkDone(){
+      const ids=getVisibleMatchIds(); if(!ids.length) return alert("처리할 경기가 없습니다.");
+      if(!confirm(`현재 화면의 ${ids.length}개 경기를 done으로 표시할까요?`)) return;
+      const {error}=await sb.from("matches").update({status:"done"}).in("id",ids).neq("status","done");
+      if(error){ console.error(error); return alert("일괄 done 처리 중 오류가 발생했습니다."); }
+      alert("일괄 done 처리 완료"); await loadMatches();
+    }
+    async function bulkFinalize(){
+      const ids=getVisibleMatchIds(); if(!ids.length) return alert("처리할 경기가 없습니다.");
+      if(!confirm(`현재 화면의 ${ids.length}개 경기 결과를 '완료(최종 확정)'로 반영할까요?\n(done 상태만 확정됩니다)`)) return;
+      const {error}=await sb.from("matches").update({is_final:true}).in("id",ids).eq("status","done").eq("is_final",false);
+      if(error){ console.error(error); return alert("일괄 완료 처리 중 오류가 발생했습니다."); }
+      alert("일괄 완료 처리 완료"); await loadMatches();
+    }
+    document.getElementById("btnBulkDone")?.addEventListener("click",bulkDone);
+    document.getElementById("btnBulkFinalize")?.addEventListener("click",bulkFinalize);
+
+    // 테이블 + 카드 동시 렌더
+    async function loadMatches(){
+      const {data:matches, error:mErr}=await sb
+        .from("matches")
+        .select("*, groups(name)")
+        .order("stage").order("group_id").order("id");
+
+      if(mErr){
+        $("#matchesTbody").innerHTML=`<tr><td colspan="8" class="p-3 text-rose-600 text-sm">${mErr.message}</td></tr>`;
+        $("#matchesCards").innerHTML=`<div class="text-rose-600 text-sm">${mErr.message}</div>`;
+        return;
+      }
+      if(!matches?.length){
+        $("#matchesTbody").innerHTML=`<tr><td colspan="8" class="p-3 text-slate-500">경기가 없습니다.</td></tr>`;
+        $("#matchesCards").innerHTML=`<div class="text-slate-500">경기가 없습니다.</div>`;
+        return;
+      }
+
+      const [{data:teams},{data:msets}] = await Promise.all([
+        sb.from("teams").select("id,name"),
+        sb.from("match_sets").select("match_id,set_no,score_a,score_b")
+      ]);
+      const tmap=new Map((teams||[]).map(t=>[t.id,t.name]));
+      const setMap=new Map(); for(const s of (msets||[])){ if(!setMap.has(s.match_id)) setMap.set(s.match_id,[]); setMap.get(s.match_id).push(s); }
+
+      // ===== 2-1) 데스크톱 테이블 =====
+      $("#matchesTbody").innerHTML = (matches||[]).map(m=>{
+        const sets = (setMap.get(m.id)||[]).sort((a,b)=>a.set_no-b.set_no);
+        const ss   = summarizeState(m, sets);
+        const scoreInputs = setInputsInline(m, sets);
+        const a = tmap.get(m.team_a_id) || ("#"+m.team_a_id);
+        const b = tmap.get(m.team_b_id) || ("#"+m.team_b_id);
+        return `
+          <tr data-match-id="${m.id}" data-bo="${m.best_of||1}" data-ptw="${m.points_to_win||25}">
+            <td class="p-2">#${m.id}</td>
+            <td class="p-2">${(m.stage||"").toUpperCase()}${m.is_final?' <span class="text-[10px] chip-success px-1 py-0.5 rounded ml-1">확정</span>':''}</td>
+            <td class="p-2">${m.group_id?((m.groups?.name||m.group_id)) + " 조 ": "-"}</td>
+            <td class="p-2 whitespace-normal break-keep leading-5"> ${a} <span class="text-slate-400">vs</span> ${b} </td>
+            <td class="p-2">
+              ${scoreInputs}
+              <div class="mt-1 flex flex-wrap gap-1">
+                <button class="px-2 py-1 rounded btn-outline text-xs" onclick="saveScores(${m.id})">💾 저장</button>
+                <button class="px-2 py-1 rounded text-xs" style="border:1px solid var(--danger-700);color:var(--danger-700)" onclick="clearScores(${m.id})">🧽 지우기</button>
+                <button class="px-2 py-1 rounded text-xs" onclick="walkover(${m.id},'A')">A 부전승</button>
+                <button class="px-2 py-1 rounded text-xs" onclick="walkover(${m.id},'B')">B 부전승</button>
+              </div>
+            </td>
+            <td class="p-2">${rowStateChip(ss)}</td>
+            <td class="p-2">
+              <input type="number" value="${m.court_no||""}" class="w-16 rounded border brand-card px-2 py-1 text-sm" onchange="updateCourt(${m.id}, this.value)" />
+              <select class="rounded border brand-card px-2 py-1 text-xs mt-1" onchange="updateStatus(${m.id}, this.value)">
+                ${["pending","live","done"].map(s=>`<option value="${s}" ${m.status===s?"selected":""}>${s}</option>`).join("")}
+              </select>
+            </td>
+            <td class="p-2">
+              <button class="px-2 py-1 rounded btn-outline text-xs" onclick="markFinal(${m.id}, true)">완료</button>
+              <button class="ml-1 px-2 py-1 rounded btn-outline text-xs" onclick="markFinal(${m.id}, false)">해제</button>
+              <button class="ml-1 px-2 py-1 rounded btn-primary text-xs" onclick="openInRef(${m.id})">심판열기</button>
+            </td>
+          </tr>`;
+      }).join("");
+
+      // ===== 2-2) 모바일 카드 =====
+      $("#matchesCards").innerHTML = (matches||[]).map(m=>{
+        const sets = (setMap.get(m.id)||[]).sort((a,b)=>a.set_no-b.set_no);
+        const ss   = summarizeState(m, sets);
+        const scoreInputs = setInputsInline(m, sets);
+        const a=tmap.get(m.team_a_id)||("#"+m.team_a_id);
+        const b=tmap.get(m.team_b_id)||("#"+m.team_b_id);
+        const grp = m.group_id?("조 "+(m.groups?.name||m.group_id)):"-";
+        return `
+          <div class="rounded-2xl border brand-card bg-white p-3 shadow-sm"
+              data-match-id="${m.id}" data-bo="${m.best_of||1}" data-ptw="${m.points_to_win||25}">
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-[11px] text-slate-500">${(m.stage||"").toUpperCase()} · ${grp} · #${m.id}</div>
+              <div class="shrink-0">${rowStateChip(ss)}</div>
+            </div>
+
+            <div class="mt-1 font-medium">${a} <span class="text-slate-400">vs</span> ${b}</div>
+            <div class="mt-1 text-[11px] text-slate-500">
+              BO${m.best_of||1} · ${m.points_to_win}${m.court_no?` · 코트 ${m.court_no}`:""}${m.is_final?' · ✅확정':''}
+            </div>
+
+            <div class="mt-2">${scoreInputs}</div>
+
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <button class="rounded px-3 py-2 btn-outline text-xs" onclick="saveScores(${m.id})">💾 저장</button>
+              <button class="rounded px-3 py-2 text-xs" style="border:1px solid var(--danger-700);color:var(--danger-700)" onclick="clearScores(${m.id})">🧽 지우기</button>
+              <button class="rounded px-3 py-2 text-xs" onclick="walkover(${m.id},'A')">A 부전승</button>
+              <button class="rounded px-3 py-2 text-xs" onclick="walkover(${m.id},'B')">B 부전승</button>
+
+              <input type="number" value="${m.court_no||""}" placeholder="코트"
+                    class="col-span-1 w-full rounded border brand-card px-2 py-1 text-xs"
+                    onchange="updateCourt(${m.id}, this.value)" />
+              <select class="col-span-1 rounded border brand-card px-2 py-1 text-xs"
+                      onchange="updateStatus(${m.id}, this.value)">
+                ${["pending","live","done"].map(s=>`<option value="${s}" ${m.status===s?"selected":""}>${s}</option>`).join("")}
+              </select>
+
+              <button class="col-span-1 rounded px-3 py-2 btn-outline text-xs" onclick="markFinal(${m.id}, true)">완료</button>
+              <button class="col-span-1 rounded px-3 py-2 btn-outline text-xs" onclick="markFinal(${m.id}, false)">해제</button>
+              <button class="col-span-2 rounded px-3 py-2 btn-primary text-xs" onclick="openInRef(${m.id})">심판 화면 열기</button>
+            </div>
+          </div>`;
+      }).join("");
+    }
+    async function createGroupRoundRobin(){
+      const ptw=parseInt($("#defaultPtw").value||"25",10);
+      const bo =1;
+      const wb =parseInt($("#defaultWinBy").value||"1",10);
+      startSaving();
+      try{
+        const {data:groups}=await sb.from("groups").select("*").order("name");
+        if(!groups?.length){ alert("그룹이 없습니다."); return; }
+        const {data:gt}=await sb.from("group_teams").select("group_id, team_id").order("group_id");
+        const by=new Map(); for(const g of groups) by.set(g.id,[]);
+        for(const r of gt||[]) by.get(r.group_id).push(r.team_id);
+        let rows=[];
+        for(const g of groups){
+          const ids=by.get(g.id); if(!ids||ids.length<3) continue;
+          for(const [a,b] of rrPairs(ids)){
+            rows.push({stage:"group", group_id:g.id, team_a_id:a, team_b_id:b, best_of:bo, points_to_win:ptw, win_by:wb, cap:null});
+          }
+        }
+        if(rows.length) await sb.from("matches").insert(rows);
+      } finally { endSaving(); await loadMatches(); }
+    }
+
+    // KO 삭제(안전)
+    async function deleteKOMatches(){
+      const {data:ko}=await sb.from("matches").select("id").in("stage",["qf","sf","final"]);
+      if(ko?.length){
+        const ids=ko.map(m=>m.id);
+        await sb.from("match_sets").delete().in("match_id", ids);
+        await sb.from("matches").delete().in("id", ids);
+      }
+    }
+
+    // ===== 순위 계산: 서버뷰 실패 시 H2H tie-break 포함 =====
+    async function fetchStandings(){
+      const advPerGroup = parseInt(document.getElementById('koAdvPerGroup')?.value || '1', 10) || 1;
+
+      const {data, error}=await sb
+        .from("v_group_ranked")
+        .select("team_id, team_name, group_name, group_rank, win, loss, set_diff, point_diff, pts_for, h2h_win_pct")
+        .lte("group_rank", advPerGroup)
+        .order("group_name",{ascending:true})
+        .order("group_rank",{ascending:true});
+      if(!error && data?.length) return data;
+
+      // Fallback with H2H tie-break among tied subset
+      const [{data:groups},{data:gteams},{data:matches},{data:msets},{data:teams}] = await Promise.all([
+        sb.from("groups").select("*"),
+        sb.from("group_teams").select("group_id, team_id"),
+        sb.from("matches").select("*").eq("stage","group"),
+        sb.from("match_sets").select("match_id,set_no,score_a,score_b"),
+        sb.from("teams").select("id,name")
+      ]);
+
+      const gName=new Map((groups||[]).map(g=>[g.id,g.name]));
+      const tName=new Map((teams||[]).map(t=>[t.id,t.name]));
+      const inGroup=new Map(); for(const gt of gteams||[]){ if(!inGroup.has(gt.group_id)) inGroup.set(gt.group_id,new Set()); inGroup.get(gt.group_id).add(gt.team_id); }
+      const setsByMatch=new Map(); for(const s of msets||[]){ if(!setsByMatch.has(s.match_id)) setsByMatch.set(s.match_id,[]); setsByMatch.get(s.match_id).push(s); }
+
+      const stats=new Map(); // gid -> tid -> stat
+      const ensure=(gid,tid)=>{ if(!stats.has(gid)) stats.set(gid,new Map()); if(!stats.get(gid).has(tid)) stats.get(gid).set(tid,{win:0,loss:0,set_diff:0,point_diff:0,pts_for:0}); return stats.get(gid).get(tid); };
+
+      for(const m of matches||[]){
+        if(!m.group_id) continue;
+        const sets=setsByMatch.get(m.id)||[];
+        let swA=0, swB=0, pfA=0, pfB=0;
+        for(const s of sets){ if(s.score_a==null||s.score_b==null) continue; pfA+=+s.score_a||0; pfB+=+s.score_b||0; if(s.score_a>s.score_b) swA++; else if(s.score_b>s.score_a) swB++; }
+        if(swA===0&&swB===0&&pfA===0&&pfB===0) continue;
+        const A=ensure(m.group_id,m.team_a_id), B=ensure(m.group_id,m.team_b_id);
+        A.set_diff+=(swA-swB); B.set_diff+=(swB-swA); A.point_diff+=(pfA-pfB); B.point_diff+=(pfB-pfA); A.pts_for+=pfA; B.pts_for+=pfB;
+        if(swA>swB){ A.win++; B.loss++; } else if(swB>swA){ B.win++; A.loss++; }
+      }
+
+      const rows=[];
+      for(const [gid,tmap] of stats){
+        for(const tid of (inGroup.get(gid)||[])) if(!tmap.has(tid)) tmap.set(tid,{win:0,loss:0,set_diff:0,point_diff:0,pts_for:0});
+
+        // 1차 정렬
+        let arr=Array.from(tmap.entries()).map(([tid,s])=>({tid,...s}));
+        arr.sort((x,y)=> y.win-x.win || y.set_diff-x.set_diff || y.point_diff-x.point_diff || y.pts_for-x.pts_for);
+
+        // 동률 조합에 대해 H2H 재정렬
+        let i=0;
+        while(i<arr.length){
+          let j=i+1;
+          while(j<arr.length && arr[j].win===arr[i].win && arr[j].set_diff===arr[i].set_diff && arr[j].point_diff===arr[i].point_diff && arr[j].pts_for===arr[i].pts_for) j++;
+          if(j-i>1){
+            const tied=arr.slice(i,j).map(x=>x.tid);
+            const h2hWins=new Map(tied.map(t=>[t,0]));
+            for(const m of (matches||[])){
+              if(m.group_id!==gid) continue;
+              if(!tied.includes(m.team_a_id) || !tied.includes(m.team_b_id)) continue;
+              const ss=(setsByMatch.get(m.id)||[]);
+              let wa=0, wb=0; for(const s of ss){ if(s.score_a>s.score_b) wa++; else if(s.score_b>s.score_a) wb++; }
+              if(wa>wb) h2hWins.set(m.team_a_id, h2hWins.get(m.team_a_id)+1);
+              else if(wb>wa) h2hWins.set(m.team_b_id, h2hWins.get(m.team_b_id)+1);
+            }
+            arr.splice(i, j-i, ...arr.slice(i,j).sort((x,y)=> (h2hWins.get(y.tid)-h2hWins.get(x.tid))));
+          }
+          i=j;
+        }
+
+        arr.slice(0, advPerGroup).forEach((it,idx)=>{
+          rows.push({team_id:it.tid, team_name:tName.get(it.tid)||("#"+it.tid), group_name:gName.get(gid)||"?", group_rank:idx+1});
+        });
+      }
+      return rows;
+    }
+
+    // KO 생성
+    async function createKnockoutFromStandings(){
+      const advPerGroup = parseInt(document.getElementById('koAdvPerGroup')?.value || '1', 10) || 1;
+      const ptw=parseInt($("#defaultPtw").value||"25",10);
+      const bo =parseInt($("#defaultBo").value||"1",10);
+      const wb =parseInt($("#defaultWinBy").value||"1",10);
+
+      const SEED_ORDER={2:[0,1],4:[0,3,2,1],8:[0,7,3,4,1,6,2,5]};
+      const PAIRS={4:[[0,3],[2,1]],8:[[0,1],[2,3],[4,5],[6,7]]};
+
+      startSaving();
+      try{
+        const ranks = await fetchStandings(advPerGroup);
+        if(!ranks.length){ alert("순위 데이터가 없습니다. (조별 결과를 먼저 저장하세요)"); return; }
+
+        // 수동 시드 우선 적용 (팀ID 콤마)
+        const manualText = ($("#manualSeeds").value||"").trim();
+        let seeds=null;
+        if(manualText){
+          seeds = manualText.split(",").map(s=>parseInt(s.trim(),10)).filter(Boolean);
+        } else {
+          const byGroup=new Map(); for(const r of ranks){ if(!byGroup.has(r.group_name)) byGroup.set(r.group_name,[]); const arr=byGroup.get(r.group_name); if(arr.length<advPerGroup) arr.push(r); }
+          seeds = Array.from(byGroup.values()).flat().map(r=>r.team_id);
+        }
+        if(seeds.length<2){ alert(`시드가 부족합니다(현재 ${seeds.length}팀).`); return; }
+
+        // 기존 KO 정리
+        await deleteKOMatches();
+
+        const N=seeds.length, S=(N<=2)?2:(N<=4?4:8);
+        const order=SEED_ORDER[S];
+        const slots=new Array(S).fill(null);
+        for(let i=0;i<Math.min(N,S);i++) slots[order[i]] = seeds[i];
+
+        if(S===2){
+          await sb.from("matches").insert([{ stage:"final", team_a_id:slots[0]??null, team_b_id:slots[1]??null, best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending" }]);
+        } else if(S===4){
+          const finalists=[]; const sfRows=[];
+          for(const [i,j] of PAIRS[4]){
+            const a=slots[i], b=slots[j];
+            if(a&&b) sfRows.push({stage:"sf", team_a_id:a, team_b_id:b, best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending"});
+            else if(a||b) finalists.push(a||b);
+          }
+          if(sfRows.length) await sb.from("matches").insert(sfRows);
+          if(finalists.length===2){
+            await sb.from("matches").insert([{stage:"final", team_a_id:finalists[0], team_b_id:finalists[1], best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending"}]);
+          }
+        } else { // 8
+          const qfPairs=PAIRS[8]; const qfRows=[]; const halfA=[]; const halfB=[];
+          for(let p=0;p<qfPairs.length;p++){
+            const [i,j]=qfPairs[p]; const a=slots[i], b=slots[j];
+            if(a&&b){ qfRows.push({stage:"qf", team_a_id:a, team_b_id:b, best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending"}); }
+            else if(a||b){ (p<2?halfA:halfB).push(a||b); }
+          }
+          if(qfRows.length) await sb.from("matches").insert(qfRows);
+          const sfRows=[]; if(halfA.length===2) sfRows.push({stage:"sf", team_a_id:halfA[0], team_b_id:halfA[1], best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending"});
+          if(halfB.length===2) sfRows.push({stage:"sf", team_a_id:halfB[0], team_b_id:halfB[1], best_of:bo, points_to_win:ptw, win_by:wb, cap:null, status:"pending"});
+          if(sfRows.length) await sb.from("matches").insert(sfRows);
+        }
+
+        alert(`대진 생성 완료! (시드 ${N}팀)`);
+      } catch(e){ console.error(e); alert("생성 실패: "+(e.message||e)); }
+      finally{ endSaving(); await loadMatches(); }
+    }
+
+    // 기타
+    async function wipeMatches(){ if(!confirm("모든 경기 및 세트 점수를 삭제합니까?")) return; startSaving(); try{ await sb.from("match_sets").delete().neq("match_id",-1); await sb.from("matches").delete().neq("id",-1); } finally{ endSaving(); await loadMatches(); } }
+    async function updateCourt(mid,val){ await sb.from("matches").update({court_no:(val?parseInt(val,10):null)}).eq("id",mid); }
+    async function updateStatus(mid,status){ await sb.from("matches").update({status}).eq("id",mid); }
+    async function markFinal(mid,flag){ await sb.from("matches").update({is_final:!!flag}).eq("id",mid); }
+    function openInRef(mid){ location.href=`./referee.html?match=${mid}`; }
+    window.updateCourt=updateCourt; window.updateStatus=updateStatus; window.markFinal=markFinal; window.openInRef=openInRef;
+    window.saveScores=saveScores; window.clearScores=clearScores; window.walkover=walkover;
+
+    // ===== Mode / Reset / Realtime / Bootstrap =====
+    async function hardReset(){
+      const key=$("#hardResetKey").value.trim() || $("#adminSecret").value.trim();
+      if(!key){ alert("비밀키를 입력하세요."); return; }
+      if(!confirm("정말 전체 삭제/초기화 하시겠습니까? 되돌릴 수 없습니다.")) return;
+      startSaving();
+      try{
+        const {error}=await sb.rpc("admin_reset_all",{p_secret:key});
+        if(error){ console.error(error); alert("실패: "+(error.message||"권한/비밀키를 확인하세요.")); return; }
+        await loadTeams(); await loadGroups(); await loadMatches(); alert("초기화 완료!");
+      } finally { endSaving(); }
+    }
+    async function switchMode(mode){
+      const key=$("#adminSecret").value.trim() || $("#hardResetKey").value.trim();
+      if(!key){ alert("관리자 비밀키를 입력하세요."); return; }
+      if(!confirm(`정말 '${mode}' 모드로 전환할까요?`)) return;
+      startSaving();
+      try{
+        const {data,error}=await sb.rpc("admin_set_mode",{p_mode:mode,p_secret:key});
+        if(error){ console.error(error); alert("실패: "+(error.message||"")); return; }
         alert(`모드 전환 완료: ${data}`);
       } finally { endSaving(); }
     }
-
-    // ===== Demo seed (RPC) =====
-    async function seedDemo(){
-      const key = document.getElementById("adminSecret").value.trim() ||
-                  document.getElementById("hardResetKey").value.trim();
-      if (!key){ alert("관리자 비밀키를 입력하세요."); return; }
-      const n = parseInt(document.getElementById("seedTeamCount").value || "20", 10);
-      startSaving();
-      try{
-        const { error } = await sb.rpc("admin_seed_demo", { p_secret: key, p_team_count: n });
-        if (error){ console.error(error); alert("실패: " + (error.message||"")); return; }
-        await loadTeams(); // 필요 시 바로 그룹 배정/라운드로빈까지 자동화 가능
-        alert("데모 데이터 주입 완료");
-      } finally { endSaving(); }
-    }
-
-    // ===== Realtime =====
     function subscribeRealtime(){
       sb.channel("admin")
-        .on("postgres_changes",{event:"*",schema:"public",table:"teams"}, loadTeams)
-        .on("postgres_changes",{event:"*",schema:"public",table:"groups"}, loadGroups)
-        .on("postgres_changes",{event:"*",schema:"public",table:"group_teams"}, loadGroups)
-        .on("postgres_changes",{event:"*",schema:"public",table:"matches"}, loadMatches)
+        .on("postgres_changes",{event:"*",schema:"public",table:"teams"},loadTeams)
+        .on("postgres_changes",{event:"*",schema:"public",table:"team_members"},loadTeams)
+        .on("postgres_changes",{event:"*",schema:"public",table:"players"},loadTeams)
+        .on("postgres_changes",{event:"*",schema:"public",table:"groups"},loadGroups)
+        .on("postgres_changes",{event:"*",schema:"public",table:"group_teams"},loadGroups)
+        .on("postgres_changes",{event:"*",schema:"public",table:"matches"},loadMatches)
+        .on("postgres_changes",{event:"*",schema:"public",table:"match_sets"},loadMatches)
         .subscribe();
     }
 
-    // ===== Bootstrap =====
-    (async ()=>{
+    // Bootstrap
+    (async()=>{
       try{
         startPage();
-        // Buttons
-        document.getElementById("btnHardReset").addEventListener("click", hardReset);
-        document.getElementById("btnModeDev").addEventListener("click",  () => switchMode("dev"));
-        document.getElementById("btnModeProd").addEventListener("click", () => switchMode("prod"));
-        document.getElementById("btnSeedDemo").addEventListener("click", seedDemo);
-        document.getElementById("btnAutoGroups").addEventListener("click", autoGroups);
-        document.getElementById("btnWipeGroups").addEventListener("click", wipeGroups);
-        document.getElementById("btnRR").addEventListener("click", createGroupRoundRobin);
-        document.getElementById("btnKO").addEventListener("click", createKnockoutFromStandings);
-        document.getElementById("btnWipeMatches").addEventListener("click", wipeMatches);
-
-        await loadTeams();
-        await loadGroups();
-        await loadMatches();
-        subscribeRealtime();
+        document.getElementById("btnHardReset").addEventListener("click",hardReset);
+        document.getElementById("btnModeDev").addEventListener("click",()=>switchMode("dev"));
+        document.getElementById("btnModeProd").addEventListener("click",()=>switchMode("prod"));
+        document.getElementById("btnAutoGroups").addEventListener("click",autoGroups);
+        document.getElementById("btnWipeGroups").addEventListener("click",wipeGroups);
+        document.getElementById("btnRR").addEventListener("click",createGroupRoundRobin);
+        document.getElementById("btnKO").addEventListener("click",()=>createKnockoutFromStandings());
+        document.getElementById("btnWipeMatches").addEventListener("click",wipeMatches);
+        document.getElementById("btnBulk").addEventListener("click",openBulk);
+        await loadTeams(); await loadGroups(); await loadMatches(); subscribeRealtime();
       } finally { endPage(); }
     })();
   </script>
