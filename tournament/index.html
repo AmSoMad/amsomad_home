@@ -73,7 +73,7 @@
   <!-- Header -->
   <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
     <div class="max-w-6xl mx-auto px-3 py-2 flex items-center justify-between">
-      <h1 class="text-lg md:text-xl font-bold">🏸 배드민턴 토너먼트</h1>
+      <h1 class="text-lg md:text-xl font-bold">🏸마루 배드민턴 토너먼트</h1>
       <div class="hidden md:flex gap-1" id="topTabs"></div>
     </div>
     <div class="max-w-6xl mx-auto px-3 pb-2">
@@ -700,7 +700,7 @@
     function closeQR(){ $("#qrModal").classList.add("hidden"); }
     $("#btnShare").addEventListener("click", ()=>{
       const url=location.href;
-      if(navigator.share) navigator.share({title:"배드민턴 토너먼트", url});
+      if(navigator.share) navigator.share({title:"마루 배드민턴 토너먼트", url});
       else { navigator.clipboard.writeText(url); alert("링크를 복사했습니다."); }
     });
     $("#btnPdf").addEventListener("click", async ()=>{
