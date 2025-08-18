@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>관리자 · 마루클럽 토너먼트</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: { zen: { bg: '#f7f7f5', fg: '#0f172a', card:'#ffffff', line:'#e7e5e4' }}}}}
+  </script>
+
+  <!-- Supabase v2 -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <style>
+    html, body { background: #f7f7f5; color: #0f172a; }
+    .card { background:#fff; border:1px solid #e7e5e4; border-radius: 16px; box-shadow: 0 2px 12px rgba(15,23,42,0.04); }
+    .h-title { font-size: clamp(18px, 2vw, 22px); font-weight: 700; }
+    .hint { color:#64748b; font-size: 12px; }
+    .btn { border:1px solid #e7e5e4; border-radius: 12px; padding: 10px 14px; }
+    .btn-prim { background:#0f172a; color:#fff; border-color:#0f172a; }
+    .btn-ghost { background:#fff; }
+    .btn-danger { background:#ef4444; color:#fff; border-color:#ef4444; }
+    .grid-2 { display:grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 1024px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+    textarea, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+
+    /* 브래킷 */
+    .bracket-col { display:flex; flex-direction:column; gap:14px; min-width:220px; }
+    .bracket-box { border:1px solid #e7e5e4; border-radius:12px; background:#fff; padding:10px 12px; }
+    .teamline { display:flex; justify-content:space-between; gap:8px; }
+    .teamname { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tbd { color:#94a3b8; font-style:italic; }
+    .winner { font-weight:700; }
+    .stage-title { font-weight:700; font-size:14px; margin-bottom:6px; color:#334155; }
+    .bracket-wrap { overflow:auto; }
+    .bracket-grid { display:flex; gap:18px; min-height: 100%; }
+
+    /* 조편성 미리보기 */
+    .group-box{border:1px solid #e7e5e4;border-radius:14px;padding:12px;background:#fff}
+    .team-pill{border:1px solid #e7e5e4;border-radius:9999px;padding:.35rem .7rem;background:#f8fafc;cursor:grab;user-select:none}
+    .team-pill:hover{background:#eef2ff}
+    .drop-hover{outline:2px dashed #6366f1;outline-offset:2px}
+    .team-selected{background:#c7d2fe;border-color:#6366f1}
+
+    .score-line{display:grid;grid-template-columns:minmax(0,1fr) auto 72px auto 72px auto minmax(0,1fr);align-items:center;gap:.5rem}
+    @media (min-width:640px){.score-line{grid-template-columns:minmax(0,1fr) auto 84px auto 84px auto minmax(0,1fr)}}
+    .score-input{text-align:center;font-variant-numeric:tabular-nums}.score-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  </style>
+</head>
+<body class="min-h-screen">
+  <header class="max-w-6xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold">마루클럽 배드민턴 · 관리자</h1>
+        <p class="hint mt-1">조편성·조별리그·8강/4강/결승 자동 생성</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnExport" class="btn btn-ghost">JSON 내보내기</button>
+        <button id="btnReset" class="btn btn-danger">토너먼트 초기화</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 pb-24 space-y-6">
+    <!-- 0) 연결 -->
+    <section class="card p-5">
+      <div class="h-title">0) 연결</div>
+      <div class="mt-2 grid lg:grid-cols-3 gap-3">
+        <input id="spUrl" class="border rounded-lg p-2" placeholder="Supabase URL" />
+        <input id="spKey" class="border rounded-lg p-2" placeholder="Supabase anon key" />
+        <button id="btnConnect" class="btn btn-prim">연결/확인</button>
+      </div>
+      <p id="connStat" class="hint mt-2">Supabase 연결 상태: -</p>
+    </section>
+
+    <!-- 1) 참가팀 등록 -->
+    <section class="card p-5">
+      <div class="h-title">1) 참가팀 등록 (엑셀 붙여넣기)</div>
+      <p class="hint mt-1">엑셀: A열=팀명, B/C열=팀원명 → 그대로 붙여넣기</p>
+      <div class="grid-2 mt-3">
+        <textarea id="taExcel" rows="10" class="w-full border rounded-lg p-3" placeholder="예)&#10;셔틀콕정복자들\t김민준\t홍길동&#10;스매시킹\t이영희\t박민수"></textarea>
+        <div class="space-y-2">
+          <div class="flex gap-2">
+            <button id="btnParse" class="btn btn-ghost">미리보기</button>
+            <button id="btnImport" class="btn btn-prim">팀/멤버 등록</button>
+          </div>
+          <div class="border rounded-lg p-3 h-[220px] overflow-auto bg-white">
+            <pre id="preview" class="text-xs whitespace-pre-wrap"></pre>
+          </div>
+          <div id="groupStatusLabel" class="hint mt-1">조편성 상태: -</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2) 조편성 -->
+    <section class="card p-5">
+      <div class="h-title">2) 조편성</div>
+      <div class="grid lg:grid-cols-4 gap-3 mt-2">
+        <label class="block">
+          <div class="hint mb-1">모드</div>
+          <select id="selMode" class="border rounded-lg p-2 w-full">
+            <option value="auto">자동(권장)</option>
+            <option value="fullleague">풀리그(전체 5팀 이하)</option>
+            <option value="groups">그룹 리그</option>
+          </select>
+        </label>
+        <label class="block">
+          <div class="hint mb-1">그룹 크기(명/조)</div>
+          <input id="inpGroupSize" type="number" min="2" max="8" value="4" class="border rounded-lg p-2 w-full" />
+        </label>
+        <label class="block">
+          <div class="hint mb-1">상위 진출 규칙</div>
+          <select id="selAdvance" class="border rounded-lg p-2 w-full">
+            <option value="1">조별 1위</option>
+            <option value="2">조별 1~2위</option>
+          </select>
+        </label>
+        <div class="flex items-end gap-2">
+          <button id="btnShuffle" class="btn btn-ghost w-full">팀 섞기</button>
+          <button id="btnLockGroups" class="btn btn-prim w-full">조편성 확정</button>
+        </div>
+      </div>
+      <div class="mt-3">
+        <div class="flex gap-2">
+          <button id="btnLoadTeams" class="btn btn-ghost">팀 새로고침</button>
+          <button id="btnPreviewGroups" class="btn btn-ghost">조 미리보기</button>
+        </div>
+        <div id="groupPreview" class="grid md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3"></div>
+      </div>
+    </section>
+
+    <!-- 3) 경기 생성 -->
+    <section class="card p-5">
+      <div class="h-title">3) 경기 생성</div>
+      <p class="hint mt-1">조편성 확정 → 조별리그 생성 → 8/4/결승 생성 → 자동배정</p>
+      <div class="flex flex-wrap gap-2 mt-2">
+        <button id="btnCreateGroupLeague" class="btn btn-prim">조별리그 생성</button>
+        <button id="btnCreateKnockout" class="btn btn-ghost">8강/4강/결승 생성</button>
+        <button id="btnAutoAssign" class="btn btn-ghost">브래킷 자동배정</button>
+      </div>
+      <div class="grid lg:grid-cols-2 gap-3 mt-4">
+        <div class="border rounded-lg p-3">
+          <div class="font-semibold mb-2">조별리그 매치</div>
+          <div id="listGroupMatches" class="space-y-2 max-h-[300px] overflow-auto"></div>
+        </div>
+        <div class="border rounded-lg p-3">
+          <div class="font-semibold mb-2">토너먼트(8/4/결승)</div>
+          <div id="listKO" class="space-y-2 max-h-[300px] overflow-auto"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3-1) 스코어 입력 (다중 행 일괄 저장) -->
+    <section class="card p-5">
+      <div class="h-title">3-1) 스코어 입력</div>
+      <div class="grid lg:grid-cols-4 gap-3 mt-3">
+        <label class="block">
+          <div class="hint mb-1">스테이지</div>
+          <select id="scoreStage" class="border rounded-lg p-2 w-full">
+            <option value="all">전체</option>
+            <option value="group">조별</option>
+            <option value="qf">8강</option>
+            <option value="sf">4강</option>
+            <option value="final">결승</option>
+          </select>
+        </label>
+        <div class="lg:col-span-3 flex items-end justify-end">
+          <button id="btnSaveAll" class="btn btn-prim">저장(선택/입력된 모든 경기)</button>
+        </div>
+      </div>
+      <div id="scoreTable" class="mt-3"></div>
+    </section>
+
+    <!-- 3-2) 브래킷 뷰어 -->
+    <section class="card p-5">
+      <div class="h-title">3-2) 브래킷 뷰어</div>
+      <div class="bracket-wrap mt-3">
+        <div id="bracketGrid" class="bracket-grid"></div>
+      </div>
+    </section>
+
+    <!-- 4) 기타 -->
+    <section class="card p-5">
+      <div class="h-title">4) 기타</div>
+      <div class="flex flex-wrap gap-2 mt-2">
+        <button id="btnReloadAll" class="btn btn-ghost">전체 새로고침</button>
+        <button id="btnHelp" class="btn btn-ghost">도움말</button>
+      </div>
+      <div id="log" class="hint mt-2"></div>
+    </section>
+    <section class="card p-5">
+      <div class="h-title">환경 모드</div>
+      <p class="hint mt-1">개발 모드: 클라이언트 쓰기 허용 · 운영 모드: 읽기만</p>
+      <div class="mt-2 flex flex-wrap items-center gap-2">
+        <input id="adminSecret" type="password" class="border rounded-lg p-2" placeholder="관리자 비밀키" />
+        <button id="btnModeDev"  class="btn">개발 모드 전환</button>
+        <button id="btnModeProd" class="btn btn-prim">운영 모드 전환</button>
+        <span id="adminModeBadge" class="badge">모드: 확인중…</span>
+      </div>
+    </section>
+
+    <!-- 5) 운영 점검 & 현황 -->
+    <section class="card p-5">
+      <div class="h-title">5) 운영 점검 & 현황</div>
+      <div class="flex flex-wrap items-center gap-2 mt-2">
+        <button id="btnPreflight" class="btn btn-prim">빠른 점검(Preflight)</button>
+        <button id="btnStatusSummary" class="btn btn-ghost">현황 요약 새로고침</button>
+        <span class="hint">연결 후 자동 점검되며, 필요할 때 다시 실행하세요.</span>
+      </div>
+      <div class="grid md:grid-cols-2 gap-3 mt-3">
+        <div class="border rounded-lg p-3 bg-white">
+          <div class="font-semibold mb-2">체크리스트</div>
+          <ul id="preflightList" class="space-y-2 text-sm"></ul>
+        </div>
+        <div class="border rounded-lg p-3 bg-white">
+          <div class="font-semibold mb-2">현황 요약</div>
+          <div id="statusSummary" class="space-y-2 text-sm"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 경로 주의: assets/js -->
+  <script type="module" src="./assets/js/admin-app.js"></script>
+  <script type="module" src="./assets/js/admin-page.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+/* assets/css/index-zen.css */
+
+/* Ripple */
+.ripple { position: relative; overflow: hidden; }
+.ripple-circle {
+  position:absolute; border-radius:9999px; transform:scale(0);
+  animation: ripple .4s ease-out forwards; background: rgba(255,255,255,.35);
+}
+@keyframes ripple { to { transform:scale(3); opacity:0; } }
+
+/* Summary marker 제거 */
+details > summary::-webkit-details-marker { display: none; }
+
+/* Skeleton */
+.skel { animation: skel 1.2s ease-in-out infinite; background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 37%, #f3f4f6 63%); background-size:400% 100%; }
+@keyframes skel { 0%{background-position:100% 0} 100%{background-position:0 0} }
+
+/* Scrollbar */
+.bracket-wrap::-webkit-scrollbar, #accordionGroups::-webkit-scrollbar { height:8px; width:8px; }
+.bracket-wrap::-webkit-scrollbar-thumb, #accordionGroups::-webkit-scrollbar-thumb { background:#e5e7eb; border-radius:9999px; }
+
+/* Score line: 팀명 − [입력] : [입력] − 팀명 */
+.score-line{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto 72px auto 72px auto minmax(0,1fr);
+  align-items:center; gap:.5rem;
+}
+@media (min-width:640px){
+  .score-line{ grid-template-columns:minmax(0,1fr) auto 84px auto 84px auto minmax(0,1fr); }
+}
+.score-input{ text-align:center; font-variant-numeric: tabular-nums; }
+.score-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* 상태별 톤(간격/색감 미세 조정) */
+.state-pending { background: linear-gradient(0deg, #fff, #fff); }
+.state-playing { background: linear-gradient(0deg, var(--playing-bg, #eff6ff), #fff); border-color:#dbeafe; }
+.state-done    { background: linear-gradient(0deg, var(--done-bg, #f8fafc), #fff); border-color:#e2e8f0; opacity:.96; }

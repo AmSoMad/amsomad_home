@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>마루클럽 토너먼트 · 경기/순위</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="supabase-url" content="https://atjxeiquqhihykpxiaxt.supabase.co">
+  <meta name="supabase-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0anhlaXF1cWhpaHlrcHhpYXh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMDc4NjMsImV4cCI6MjA3MDU4Mzg2M30.kgxY_1meq10y6lhI-wQhX5QPbfyXk4eIkp1o-iJ1Bpk">
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            zen: { bg:'#f6f7f5', fg:'#0f172a', card:'#ffffff', line:'#e7e5e4', hint:'#64748b' },
+            accent: { 50:'#eef2ff', 100:'#e0e7ff', 200:'#c7d2fe', 300:'#a5b4fc' },
+            soft: { green:'#f0fdf4', blue:'#eff6ff', amber:'#fffbeb' }
+          },
+          boxShadow:{ zen:'0 2px 12px rgba(15,23,42,0.06)' }
+        }
+      }
+    }
+  </script>
+
+  <!-- Supabase v2 -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <!-- Zen CSS -->
+  <link rel="stylesheet" href="./assets/css/index-zen.css" />
+
+  <style>
+    html, body { background:#f6f7f5; color:#0f172a; }
+    .card { background:#fff; border:1px solid #e7e5e4; border-radius:16px; box-shadow:var(--shadow,0 2px 12px rgba(15,23,42,.04)); }
+    .h-title { font-size:clamp(18px,2vw,22px); font-weight:700; }
+    .hint { color:#64748b; }
+    .btn { border:1px solid #e7e5e4; border-radius:12px; padding:10px 14px; background:#fff; transition:transform .02s linear, box-shadow .2s ease; position:relative; overflow:hidden; }
+    .btn:active { transform: translateY(1px); }
+    .btn-prim { background:#0f172a; color:#fff; border-color:#0f172a; }
+    .tabs { border:1px solid #e7e5e4; background:#fff; border-radius:9999px; padding:4px; display:inline-flex; gap:4px; }
+    .tab-btn { border-radius:9999px; padding:8px 14px; font-weight:600; color:#334155; }
+    .tab-btn.active { background:#0f172a; color:#fff; }
+    .badge { border:1px solid #e7e5e4; border-radius:9999px; padding:2px 8px; font-size:11px; }
+    .accordion-item[open] .acc-chevron { transform: rotate(180deg); }
+
+    /* Bracket 기본 */
+    .bracket-col { display:flex; flex-direction:column; gap:14px; min-width:220px; }
+    .bracket-box { border:1px solid #e7e5e4; border-radius:12px; background:#fff; padding:10px 12px; }
+    .teamline { display:flex; justify-content:space-between; gap:8px; }
+    .teamname { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tbd { color:#94a3b8; font-style:italic; }
+    .winner { font-weight:700; }
+    .stage-title { font-weight:700; font-size:14px; margin-bottom:6px; color:#334155; }
+    .bracket-wrap { overflow:auto; }
+    .bracket-grid { display:flex; gap:18px; min-height: 100%; }
+  </style>
+</head>
+<body class="min-h-screen">
+  <header class="max-w-7xl mx-auto px-4 py-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold">마루클럽 배드민턴</h1>
+        <p class="hint mt-1">경기 · 순위</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="tabs">
+          <button class="tab-btn active" data-tabto="games">경기</button>
+          <button class="tab-btn" data-tabto="standings">순위</button>
+        </div>
+        <button id="btnRefresh" class="btn">새로고침</button>
+      </div>
+    </div>
+    <!-- 헤더 우측 영역에 배지 추가 -->
+    <span id="modeBadge" class="badge">모드: 확인중…</span>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 pb-24 space-y-6">
+    <!-- 탭: 경기 -->
+    <section id="tab-games" class="space-y-6">
+      <!-- 1) 조별리그 (아코디언: 경기결과만) -->
+      <section class="card p-6">
+        <div class="h-title">조별리그</div>
+        <div id="accordionGroups" class="mt-4 space-y-3">
+          <div class="border rounded-lg p-3 bg-white skel h-12"></div>
+          <div class="border rounded-lg p-3 bg-white skel h-12"></div>
+        </div>
+      </section>
+
+      <!-- 2) 브래킷 뷰어 -->
+      <section class="card p-6">
+        <div class="h-title">토너먼트</div>
+        <div class="bracket-wrap mt-3">
+          <div id="bracketGrid" class="bracket-grid"></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- 탭: 순위 -->
+    <section id="tab-standings" class="space-y-6 hidden">
+      <!-- 1) (있으면) 토너먼트 먼저 -->
+      <section class="card p-6">
+        <div class="h-title">1) 토너먼트 진행</div>
+        <div class="bracket-wrap mt-3">
+          <div id="bracketGrid2" class="bracket-grid"></div>
+        </div>
+      </section>
+
+      <!-- 2) 조별 순위 테이블 -->
+      <section class="card p-6">
+        <div class="h-title">2) 조별 순위</div>
+        <div id="tablesByGroup" class="mt-4 grid md:grid-cols-2 gap-4"></div>
+      </section>
+
+      <!-- 3) 조별 경기결과 모음 -->
+      <section class="card p-6">
+        <div class="h-title">3) 조별 경기결과</div>
+        <div id="groupResultsAll" class="mt-4 grid md:grid-cols-2 gap-4"></div>
+      </section>
+    </section>
+  </main>
+
+  <!-- 토스트 -->
+  <div id="snackbar" class="fixed left-1/2 -translate-x-1/2 bottom-6 z-50 hidden">
+    <div class="rounded-xl bg-[#0f172a] text-white px-4 py-2 shadow-zen text-sm" id="snackbarText">-</div>
+  </div>
+
+  <!-- 스크립트 -->
+  <script type="module" src="./assets/js/admin-app.js"></script>
+  <script type="module" src="./assets/js/index-page.js"></script>
+</body>
+</html>
