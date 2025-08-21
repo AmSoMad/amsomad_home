@@ -6,6 +6,7 @@
  * ========================= */
 export const AppState = {
   sb: null,
+  onReady: [],
   // 배드민턴 기본 규칙: 21점 듀스, 2점차, cap 25, 3세트(2선승)
   cfg: { bestOf: 1, pointsToWin: 25, winBy: 1, cap: 25 },
   teamsCache: [],

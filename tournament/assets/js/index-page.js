@@ -48,6 +48,7 @@ $('#btnConnect')?.addEventListener('click', async ()=>{
     await fullRefresh();
     subscribeRealtime(async ()=>{ await fullRefresh(); });
     toast('연결 완료');
+  try { (AppState.onReady||[]).forEach(fn => { try { if (typeof fn==='function') fn(); } catch(e) { console.error('onReady fn failed', e);} }); } catch(e) {}
   }catch(e){ console.error(e); toast('연결 실패: '+e.message); }
 });
 $('#btnRefresh')?.addEventListener('click', fullRefresh);
@@ -447,6 +448,7 @@ async function autoConnectFromMeta(){
   await fetchMode();
   await fullRefresh();
   toast('연결 완료');
+  try { (AppState.onReady||[]).forEach(fn => { try { if (typeof fn==='function') fn(); } catch(e) { console.error('onReady fn failed', e);} }); } catch(e) {}
 
   // 모드 변경 실시간 반영
   AppState.sb
