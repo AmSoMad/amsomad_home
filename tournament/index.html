@@ -65,8 +65,9 @@
       <div class="flex items-center gap-2">
         <div class="tabs">
           <button class="tab-btn active" data-tabto="games">경기</button>
+          <button class="tab-btn" data-tabto="courts">코트</button>
           <button class="tab-btn" data-tabto="standings">순위</button>
-        </div>
+        </div>        
         <button id="btnRefresh" class="btn">새로고침</button>
       </div>
     </div>
@@ -75,6 +76,7 @@
   </header>
 
   <main class="max-w-7xl mx-auto px-4 pb-24 space-y-6">
+    <section id="courtBoard" class="space-y-3"></section>
     <!-- 탭: 경기 -->
     <section id="tab-games" class="space-y-6">
       <!-- 1) 조별리그 (아코디언: 경기결과만) -->
@@ -94,7 +96,13 @@
         </div>
       </section>
     </section>
-
+    <!-- 탭: 코트 -->
+    <section id="tab-courts" class="space-y-6 hidden">
+      <section class="card p-6">
+        <div class="h-title">코트 별 경기</div>
+        <div id="courtMatchSchedule" class="mt-2"></div>
+      </section>
+    </section>
     <!-- 탭: 순위 -->
     <section id="tab-standings" class="space-y-6 hidden">
       <!-- 1) (있으면) 토너먼트 먼저 -->

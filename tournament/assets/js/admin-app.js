@@ -430,7 +430,7 @@ export async function saveMatchScore(matchId, setArr, resultType = 'normal') {
     status = winner ? 'done' : (sets.length > 0 ? 'playing' : 'pending');
   }
 
-  const { error } = await sb.from('matches').update({
+  const { error } = await sb.from('matches').update({ last_action_at: new Date().toISOString(),
     set_scores: sets, winner_id: winner, status, result_type: resultType, updated_at: new Date().toISOString()
   }).eq('id', matchId);
   if (error) throw error;
@@ -756,4 +756,76 @@ export function subscribeRealtime(onChange) {
     .subscribe();
   AppState.rtChannel = ch;
   return ch;
+}
+
+/* =========================
+ * 코트 배정(교차 규칙): 그룹별 1번째 경기들을 먼저, 그 다음 2번째 경기들...
+ * 평탄화 후 코트 1..N(랜덤 셔플)에 라운드로빈으로 배정
+ * ========================= */
+export async function assignCourtsInterleaved({ numCourts=1, randomize=true }={}){
+  ensureSB();
+  const sb = AppState.sb;
+  const n = Math.max(1, parseInt(numCourts,10)||1);
+
+  const { data: list, error } = await sb
+    .from('matches')
+    .select('id, round, bracket_pos, group_id, groups(code)')
+    .eq('stage','group')
+    .order('group_id', { ascending: true })
+    .order('round', { ascending: true })
+    .order('bracket_pos', { ascending: true });
+  if (error) throw error;
+  if (!list?.length) return { updated: 0 };
+
+  // 그룹별로 버킷화
+  const byGroup = new Map();
+  for (const m of list){
+    const g = m.groups?.code || '-';
+    if (!byGroup.has(g)) byGroup.set(g, []);
+    byGroup.get(g).push(m);
+  }
+  const codes = [...byGroup.keys()].sort((a,b)=>a.localeCompare(b));
+  // 각 그룹 내 정렬(안전)
+  for (const c of codes){
+    byGroup.set(c, byGroup.get(c).sort((a,b)=>{
+      const r=(a.round||0)-(b.round||0);
+      if (r!==0) return r;
+      return (a.bracket_pos||0)-(b.bracket_pos||0);
+    }));
+  }
+  // 교차 평탄화: A1,B1,C1,A2,B2,C2,...
+  const maxLen = Math.max(...codes.map(c=>byGroup.get(c).length));
+  const flat = [];
+  for (let i=0;i<maxLen;i++){
+    for (const c of codes){
+      const arr = byGroup.get(c);
+      if (i < arr.length) flat.push(arr[i]);
+    }
+  }
+
+  let courts = Array.from({length:n}, (_,i)=>i+1);
+  if (randomize && courts.length>1) courts = shuffle(courts);
+  const nextSeq = new Map(courts.map(c=>[c,1]));
+
+  for (let i=0;i<flat.length;i++){
+    const c = courts[i % courts.length];
+    const seq = nextSeq.get(c);
+    nextSeq.set(c, seq+1);
+    const { error: ue } = await sb.from('matches')
+      .update({ court_no: c, court_seq: seq })
+      .eq('id', flat[i].id);
+    if (ue) throw ue;
+  }
+  return { updated: flat.length };
+}
+
+/* 경기 시작 처리: playing + 타임스탬프 */
+export async function startMatch(matchId){
+  ensureSB();
+  const sb = AppState.sb;
+  const now = new Date().toISOString();
+  const { error } = await sb.from('matches')
+    .update({ status: 'playing', started_at: now, last_action_at: now })
+    .eq('id', matchId);
+  if (error) throw error;
 }

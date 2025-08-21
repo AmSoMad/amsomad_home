@@ -137,7 +137,10 @@
     <section class="card p-5">
       <div class="h-title">3) 경기 생성</div>
       <p class="hint mt-1">조편성 확정 → 조별리그 생성 → 8/4/결승 생성 → 자동배정</p>
-      <div class="flex flex-wrap gap-2 mt-2">
+      <div class="flex flex-wrap gap-2 mt-2">        
+        <label class="inline-flex items-center gap-2"><span class="hint">코트 수</span>          
+          <input id="inpCourts" type="number" min="1" value="1" class="border rounded-lg p-2 w-24" />        
+        </label>
         <button id="btnCreateGroupLeague" class="btn btn-prim">조별리그 생성</button>
         <button id="btnCreateKnockout" class="btn btn-ghost">8강/4강/결승 생성</button>
         <button id="btnAutoAssign" class="btn btn-ghost">브래킷 자동배정</button>
@@ -187,6 +190,9 @@
     <section class="card p-5">
       <div class="h-title">4) 기타</div>
       <div class="flex flex-wrap gap-2 mt-2">
+        <label class="inline-flex items-center gap-2"><span class="hint">코트 수</span>
+          <input id="inpCourts" type="number" min="1" value="1" class="border rounded-lg p-2 w-24" />
+        </label>
         <button id="btnReloadAll" class="btn btn-ghost">전체 새로고침</button>
         <button id="btnHelp" class="btn btn-ghost">도움말</button>
       </div>

@@ -2,7 +2,7 @@
 import {
   AppState, connectSupabase, ping,
   listMatchesByStage, listKnockoutStructured, getTeamMap, labelOrName, setsToString,
-  saveMatchScore, subscribeRealtime
+  saveMatchScore, subscribeRealtime, startMatch
 } from './admin-app.js';
 
 const $  = (s)=>document.querySelector(s);
@@ -23,18 +23,17 @@ async function fetchMode(){
   if (b) b.textContent = '모드: ' + (AppState.mode==='dev' ? '경기중' : '경기종료');
 }
 
-/* ========== 탭 전환 (경기|순위) ========== */
+/* ========== 탭 전환 (경기|코트|순위) ========== */
+const TABS = ['games','courts','standings'];
 $$('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     $$('.tab-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     const to = btn.dataset.tabto;
-    ['games','standings'].forEach(n=>{
-      $('#tab-'+n)?.classList.toggle('hidden', n!==to);
-    });
+    TABS.forEach(n => $('#tab-'+n)?.classList.toggle('hidden', n!==to));
+    if (to === 'courts') { renderCourtBoard(); } // 탭 진입 시 즉시 새로고침
   });
 });
-
 /* ========== 연결 ========== */
 $('#btnConnect')?.addEventListener('click', async ()=>{
   try{
@@ -140,6 +139,8 @@ function makeScoreCard(m){
   card.dataset.points = (m.points_to_win ?? AppState.cfg.pointsToWin);
   card.dataset.cap    = (m.cap ?? AppState.cfg.cap);
   card.dataset.stage  = m.stage;
+  card.dataset.courtNo = (m.court_no||'');
+  card.dataset.courtSeq = (m.court_seq||'');
 
   // 상태별 미묘한 톤
   const st = (m.status || 'pending');
@@ -157,7 +158,7 @@ function makeScoreCard(m){
         <div class="text-sm font-bold truncate">${aName} <span class="hint">vs</span> ${bName}</div>
         <div class="text-xs hint truncate">${aMembers} <span class="hint">vs</span> ${bMembers}</div>
       </div>
-      <button class="btn btn-prim px-3 py-2 text-sm ripple" data-save ${readOnly?'disabled':''}>저장</button>
+      <div class="flex items-center gap-2"><span class="badge">코트 ${m.court_no||"-"} · ${(m.court_seq||1)}번</span><button class="btn px-3 py-2 text-sm" data-start>시작</button><button class="btn btn-prim px-3 py-2 text-sm ripple" data-save ${readOnly?'disabled':''}>저장</button></div>
     </div>
 
     <div class="set-row relative border rounded-lg p-3 mt-3 bg-white">
@@ -166,20 +167,16 @@ function makeScoreCard(m){
         <span class="hint">-</span>
         <input type="number" min="0" max="${cap}" step="1" inputmode="numeric"
                class="score-input border rounded-lg p-2 w-20 text-center text-lg font-semibold focus:outline-none focus:ring-1 focus:ring-accent-200 ${isDone?'bg-slate-50':''}"
-               data-set="0" data-side="a" value="${va}" ${isDone?'disabled':''}>
+               data-set="0" data-side="a" value="${va}" ${(readOnly || m.status!=='playing')?'disabled':''}>
         <span class="mx-1 font-semibold text-slate-700 text-lg text-center">:</span>
         <input type="number" min="0" max="${cap}" step="1" inputmode="numeric"
                class="score-input border rounded-lg p-2 w-20 text-center text-lg font-semibold focus:outline-none focus:ring-1 focus:ring-accent-200 ${isDone?'bg-slate-50':''}"
-               data-set="0" data-side="b" value="${vb}" ${isDone?'disabled':''}>
+               data-set="0" data-side="b" value="${vb}" ${(readOnly || m.status!=='playing')?'disabled':''}>
         <span class="hint">-</span>
         <span class="score-name text-sm font-medium text-slate-700 truncate text-right">${bName}</span>
       </div>
 
-      <div class="quick-pts hidden absolute left-2 top-full mt-1 z-10 bg-white border rounded-lg shadow p-1 flex gap-1">
-        <button class="btn px-2 py-1 text-xs" data-quick-val="15" ${isDone?'disabled':''}>15</button>
-        <button class="btn px-2 py-1 text-xs" data-quick-val="21" ${isDone?'disabled':''}>21</button>
-        <button class="btn px-2 py-1 text-xs" data-quick-val="25" ${isDone?'disabled':''}>25</button>
-      </div>
+      <div class="quick-pts hidden absolute left-2 top-full mt-1 z-10 bg-white border rounded-lg shadow p-1 flex gap-1">${(()=>{ const cand=[15,(m.points_to_win||21),(m.cap||25)]; const uniq=[...new Set(cand.filter(Boolean))].sort((a,b)=>a-b); return uniq.map(v=>`<button class="btn px-2 py-1 text-xs" data-quick-val="${v}" ${(readOnly || m.status!=='playing')?'disabled':''}>${v}</button>`).join(''); })()}</div>
     </div>
 
     <div class="flex flex-wrap items-center gap-2 mt-2">
@@ -250,6 +247,23 @@ $('#accordionGroups')?.addEventListener('click', (e)=>{
     return;
   }
 
+  const startBtn = e.target.closest('[data-start]');
+  if (startBtn && !startBtn.disabled){
+    (async ()=>{
+      try{
+        const matchId = card.dataset.matchId;
+        const courtNo = card.dataset.courtNo ? Number(card.dataset.courtNo) : null;
+        const courtSeq = card.dataset.courtSeq ? Number(card.dataset.courtSeq) : null;
+        if (!courtNo || !courtSeq){ toast('코트 배정이 필요합니다.'); return; }
+        const { data:prev } = await AppState.sb.from('matches').select('id,status,court_seq').eq('court_no', courtNo).lt('court_seq', courtSeq);
+        if ((prev||[]).some(x=>x.status!=='done')){ toast('이전 경기가 아직 종료되지 않았습니다.'); return; }
+        const { data:nowPlaying } = await AppState.sb.from('matches').select('id').eq('court_no', courtNo).eq('status','playing').limit(1);
+        if (nowPlaying && nowPlaying.length){ toast('해당 코트에서 이미 경기가 진행중입니다.'); return; }
+        await startMatch(matchId);
+        toast('경기를 시작했습니다.');
+      }catch(e){ console.error(e); toast('시작 실패: '+e.message); }
+    })();
+  }
   const saveBtn = e.target.closest('[data-save]');
   if (saveBtn && !saveBtn.disabled){
     saveOneCard(card).catch(err=>{ msgEl.innerText = '저장 실패: '+err.message; });
@@ -357,19 +371,7 @@ async function renderStandingsPage(){
     rows.forEach(r=>{
       const tr = document.createElement('tr'); tr.className='border-t';
       const mem = membersStr(r.team_id);
-      tr.innerHTML = `<td class="p-2">
-          <div class="flex flex-col">
-            <span>${r.name}</span>
-            <span class="hint text-xs">${mem}</span>
-          </div>
-        </td>
-        <td class="text-center p-2">${r.gp}</td>
-        <td class="text-center p-2">${r.w}</td>
-        <td class="text-center p-2">${r.l}</td>
-        <td class="text-center p-2">${r.pf}</td>
-        <td class="text-center p-2">${r.pa}</td>
-        <td class="text-center p-2">${r.diff}</td>`;
-      tr.innerHTML = `<td class="p-2">${r.name}</td>
+      tr.innerHTML =  `<td class="p-2">${r.name}</td>
                       <td class="text-center p-2">${r.gp}</td><td class="text-center p-2">${r.w}</td><td class="text-center p-2">${r.l}</td>
                       <td class="text-center p-2">${r.pf}</td><td class="text-center p-2">${r.pa}</td><td class="text-center p-2">${r.diff}</td>`;
       tb.appendChild(tr);
@@ -453,5 +455,154 @@ async function autoConnectFromMeta(){
       await fetchMode(); await fullRefresh();
     })
     .subscribe();
+
+  // 코트 보드 초기 렌더 + 실시간 반영
+  await renderCourtBoard();
+  try{
+    AppState.sb.channel('courtboard-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => renderCourtBoard())
+      .subscribe();
+  }catch(e){ console.error('Court Board RT subscribe failed', e); }
+
 }
 document.addEventListener('DOMContentLoaded', autoConnectFromMeta);
+
+
+// ===== 코트 현황 보드 =====
+const STALLED_MINUTES = 10;
+async function fetchCourtSnapshot(){
+  const { data:list, error } = await AppState.sb.from('matches')
+    .select('id,court_no,court_seq,status,team_a:team_a_id(name),team_b:team_b_id(name),started_at,last_action_at')
+    .not('court_no','is', null)
+    .order('court_no',{ascending:true})
+    .order('court_seq',{ascending:true});
+  if (error) throw error;
+  return list||[];
+}
+function groupByCourt(list){
+  const map = new Map();
+  for (const m of list){
+    if (!map.has(m.court_no)) map.set(m.court_no, []);
+    map.get(m.court_no).push(m);
+  }
+  return [...map.entries()].sort((a,b)=>a[0]-b[0]);
+}
+function isStalled(m){
+  if (m.status!=='playing') return false;
+  const t = m.last_action_at || m.started_at;
+  if (!t) return false;
+  return ((Date.now() - new Date(t).getTime())/60000) >= STALLED_MINUTES;
+}
+async function renderCourtBoard(){
+  const root = document.getElementById('courtBoard');
+  if (!root) return;
+  try{
+    const list = await fetchCourtSnapshot();
+    const courts = groupByCourt(list);
+    const stalled = list.filter(isStalled);
+    let html = `<div class="mb-2 flex items-center gap-2">
+      <h2 class="text-xl font-semibold">코트 현황</h2>
+      <span class="hint">(실시간)</span>
+    </div>`;
+    if (stalled.length){
+      html += `<div class="mb-3 p-2 border rounded-lg bg-amber-50"><strong>⚠ 멈춘 경기</strong> (${STALLED_MINUTES}분 이상 변화 없음): ${
+        stalled.map(m=>`코트 ${m.court_no} · ${m.court_seq}번 (${m.team_a?.name||'A'} vs ${m.team_b?.name||'B'})`).join(' , ')
+      }</div>`;
+    }
+    html += `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">`;
+    for (const [no, arr] of courts){
+      const playing = arr.find(x=>x.status==='playing');
+      const next = arr.find(x=>x.status!=='done' && (!playing || x.court_seq>playing.court_seq));
+      html += `<div class="card p-3">
+        <div class="flex items-center justify-between">
+          <div class="text-lg font-semibold">코트 ${no}</div>
+          <div>${playing?'<span class="pill pill-live">진행중</span>':'<span class="pill">대기</span>'}</div>
+        </div>
+        <div class="mt-2 text-sm">${playing ? `#${playing.court_seq} ${playing.team_a?.name||'A'} vs ${playing.team_b?.name||'B'}` : '현재 진행중인 경기가 없습니다.'}</div>
+        <div class="mt-1 text-xs hint">${next ? `다음: #${next.court_seq} ${next.team_a?.name||'A'} vs ${next.team_b?.name||'B'}` : ''}</div>
+      </div>`;
+    }
+    html += `</div>`;
+    root.innerHTML = html;
+  }catch(e){ console.error('renderCourtBoard', e); }
+}
+// ===== 코트 탭: 코트별 경기순번 나열 =====
+async function renderCourtSchedule(){
+  const wrap = document.getElementById('courtMatchSchedule');
+  if (!wrap) return;
+
+  try{
+    // court_no가 지정된 모든 매치 스냅샷 (코트/순번 기준 정렬)
+    const { data:list, error } = await AppState.sb.from('matches')
+      .select('id,court_no,court_seq,status,team_a:team_a_id(name),team_b:team_b_id(name)')
+      .not('court_no','is', null)
+      .order('court_no',{ascending:true})
+      .order('court_seq',{ascending:true});
+    if (error) throw error;
+
+    // 코트별 그룹화
+    const map = new Map();
+    for (const m of (list||[])){
+      if (!map.has(m.court_no)) map.set(m.court_no, []);
+      map.get(m.court_no).push(m);
+    }
+    const courts = [...map.entries()].sort((a,b)=>a[0]-b[0]);
+
+    // 렌더링
+    let html = '';
+    if (!courts.length){
+      html = `<div class="hint">코트에 배정된 경기가 없습니다.</div>`;
+    }else{
+      html = `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">`;
+      for (const [no, arr] of courts){
+        // 순번 칩(한 줄), 그리고 상세 리스트(두 줄 텍스트)
+        const chips = arr.map(m=>{
+          const cls = m.status==='playing' ? 'pill pill-live'
+                    : m.status==='done' ? 'pill'
+                    : 'pill';
+          return `<span class="${cls}" title="#${m.court_seq} ${m.team_a?.name||'A'} vs ${m.team_b?.name||'B'}">#${m.court_seq}</span>`;
+        }).join(' ');
+
+        const lines = arr.map(m=>{
+          const st = m.status==='playing' ? '<span class="text-amber-600 font-semibold">진행중</span>'
+                   : m.status==='done'    ? '<span class="text-slate-500">종료</span>'
+                   : '<span class="text-slate-500">대기</span>';
+          return `
+            <li class="flex items-center gap-2">
+              <span class="w-8 shrink-0 text-right text-sm">#${m.court_seq}</span>
+              <span class="flex-1 truncate text-sm">${m.team_a?.name||'A'} vs ${m.team_b?.name||'B'}</span>
+              <span class="shrink-0 text-xs">${st}</span>
+            </li>`;
+        }).join('');
+
+        html += `
+          <div class="card p-3">
+            <div class="flex items-center justify-between">
+              <div class="text-lg font-semibold">코트 ${no}</div>
+              <div class="hint">총 ${arr.length}경기</div>
+            </div>
+            <div class="mt-2 flex flex-wrap gap-2">${chips}</div>
+            <ol class="mt-2 space-y-1">${lines}</ol>
+          </div>`;
+      }
+      html += `</div>`;
+    }
+    wrap.innerHTML = html;
+  }catch(e){
+    console.error('renderCourtSchedule', e);
+    wrap.innerHTML = `<div class="hint">코트 스케줄을 불러오는 중 문제가 발생했습니다.</div>`;
+  }
+}
+// ===== 앱 초기화 =====
+AppState.onReady.push(()=>{
+  renderCourtBoard();
+  renderCourtSchedule();
+  try{
+    AppState.sb.channel('court-rt')
+      .on('postgres_changes',{event:'*',schema:'public',table:'matches'},()=>{
+        renderCourtBoard();
+        renderCourtSchedule();
+      })
+      .subscribe();
+  }catch(e){}
+});

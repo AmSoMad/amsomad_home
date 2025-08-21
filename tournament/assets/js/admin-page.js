@@ -3,7 +3,7 @@ import {
   AppState, connectSupabase, ping,
   parseExcelTextarea, upsertTeams, loadTeams,
   shuffle, planGroups, lockGroups,
-  createGroupLeagueMatches, createKnockoutPlaceholders, autoAssignKnockout,
+  createGroupLeagueMatches, createKnockoutPlaceholders, autoAssignKnockout, assignCourtsInterleaved,
   listGroupMatches, listKnockout, listMatchesByStage, getMatch, saveMatchScore,
   listKnockoutStructured, getTeamMap, labelOrName, setsToString,
   resetTournament, exportJson, subscribeRealtime
@@ -246,8 +246,10 @@ $('#btnLockGroups')?.addEventListener('click', async ()=>{
  * ========================= */
 $('#btnCreateGroupLeague')?.addEventListener('click', async ()=>{
   try {
+    const courts = parseInt(document.querySelector('#inpCourts')?.value||'1',10);
     await createGroupLeagueMatches();
-    toast('조별리그 매치를 생성했습니다.');
+    await assignCourtsInterleaved({ numCourts: courts, randomize: true });
+    toast('조별리그 매치 생성 + 코트 배정을 완료했습니다.');
     await refreshAllViews();
   } catch(e){ console.error(e); toast('조별리그 생성 실패: '+e.message); }
 });
