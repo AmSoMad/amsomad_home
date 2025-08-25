@@ -330,12 +330,12 @@ async function refreshScoreTable(){
       const base = parseInt(card.dataset.points,10) || 25;
 
       card.innerHTML = `
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="text-sm font-bold">${aName} <span class="hint">vs</span> ${bName}</div>
-            <div class="text-xs hint">${aMembers} <span class="hint">vs</span> ${bMembers}</div>
+        <div class="card-head">
+          <div class="card-head__left">
+            <div class="text-sm font-bold truncate">${aName} <span class="hint">vs</span> ${bName}</div>
+            <div class="text-xs hint truncate members-line">${aMembers} <span class="hint">vs</span> ${bMembers}</div>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="card-head__right">
             <select class="border rounded-lg p-2 text-sm bg-white" data-result>
               <option value="normal" ${m.result_type==='normal'?'selected':''}>일반</option>
               <option value="wo_a">몰수(${aName})</option>

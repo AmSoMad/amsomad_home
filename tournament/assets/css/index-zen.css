@@ -1,4 +1,13 @@
 /* assets/css/index-zen.css */
+html, body { background:#f5efe6; color:#2b2118; }
+.card { background:#fffaf3; border:1px solid #e8dfd3; border-radius:16px; box-shadow:var(--shadow,0 2px 12px rgba(58,42,32,.04)); }
+.hint { color:#7a6a5a; }
+.btn { border:1px solid #e8dfd3; border-radius:12px; padding:10px 14px; background:#fffaf3; }
+.btn-prim { background:#3a2a20; color:#fff; border-color:#3a2a20; }
+.tabs { border:1px solid #e8dfd3; background:#fffaf3; }
+.tab-btn.active { background:#3a2a20; color:#fff; }
+.badge { border:1px solid #e8dfd3; border-radius:9999px; padding:2px 8px; font-size:11px; background:#fffaf3; }
+.bracket-box { border:1px solid #e8dfd3; background:#fffaf3; }
 
 /* Ripple */
 .ripple { position: relative; overflow: hidden; }
@@ -55,4 +64,20 @@ details > summary::-webkit-details-marker { display: none; }
 .pill-live{
   background:#fde68a;
   border-color:#fde68a;
+}
+/* --- 카드 헤더 보강 --- */
+.card-head { display:flex; align-items:flex-start; gap:.75rem; }
+.card-head__left { min-width:0; flex:1 1 auto; }    /* 왼쪽: 줄임표 허용 */
+.card-head__right { flex:0 0 auto; display:flex; align-items:center; gap:.35rem; white-space:nowrap; } /* 오른쪽: 절대 줄바꿈 금지 */
+.badge-nowrap { white-space:nowrap; } /* 뱃지 단일 라인 고정 */
+
+/* 아주 작은 화면에서 버튼/텍스트 살짝 축소 */
+@media (max-width:420px){
+  .card-head__right .btn { padding:6px 10px; font-size:12px; }
+  .card-head__right .badge { font-size:11px; }
+}
+
+/* XS에서는 멤버 라인은 숨기고(sm부터 보이기) — '…팀원 미등록' 같은 긴 문자열로 인한 깨짐 방지 */
+@media (max-width:640px){
+  .members-line { display:none; }
 }

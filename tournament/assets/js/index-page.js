@@ -107,9 +107,9 @@ async function renderAccordion(){
     sum.innerHTML = `
       <div class="flex items-center gap-2">
         <span class="font-semibold">${code}조</span>
-        <span class="badge">pending:${stat.pending||0}</span>
-        <span class="badge">playing:${stat.playing||0}</span>
-        <span class="badge">done:${stat.done||0}</span>
+        <span class="badge">대기중:${stat.pending||0}</span>
+        <span class="badge">경기중:${stat.playing||0}</span>
+        <span class="badge">경기완료:${stat.done||0}</span>
       </div>
       <svg class="acc-chevron w-4 h-4 text-slate-500 transition" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.25 4.25a.75.75 0 01-1.08 0L5.25 8.27a.75.75 0 01-.02-1.06z"/></svg>
     `;
@@ -154,14 +154,17 @@ function makeScoreCard(m){
   const readOnly = isDone || (AppState.mode !== 'dev');  // dev 때만 편집 허용
 
   card.innerHTML = `
-    <div class="flex items-start justify-between gap-3">
-      <div class="min-w-0">
+    <div class="card-head">
+      <div class="card-head__left">
         <div class="text-sm font-bold truncate">${aName} <span class="hint">vs</span> ${bName}</div>
-        <div class="text-xs hint truncate">${aMembers} <span class="hint">vs</span> ${bMembers}</div>
+        <div class="text-xs hint truncate members-line">${aMembers} <span class="hint">vs</span> ${bMembers}</div>
       </div>
-      <div class="flex items-center gap-2"><span class="badge">코트 ${m.court_no||"-"} · ${(m.court_seq||1)}번</span><button class="btn px-3 py-2 text-sm" data-start>시작</button><button class="btn btn-prim px-3 py-2 text-sm ripple" data-save ${readOnly?'disabled':''}>저장</button></div>
+      <div class="card-head__right">
+        <span class="badge badge-nowrap">C${m.court_no||"-"} · #${m.court_seq||1}</span>
+        <button class="btn px-3 py-2 text-sm" data-start>시작</button>
+        <button class="btn btn-prim px-3 py-2 text-sm ripple" data-save ${readOnly?'disabled':''}>저장</button>
+      </div>
     </div>
-
     <div class="set-row relative border rounded-lg p-3 mt-3 bg-white">
       <div class="score-line">
         <span class="score-name text-sm font-medium text-slate-700 truncate">${aName}</span>

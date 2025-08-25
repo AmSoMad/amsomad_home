@@ -9,18 +9,18 @@
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            zen: { bg:'#f6f7f5', fg:'#0f172a', card:'#ffffff', line:'#e7e5e4', hint:'#64748b' },
-            accent: { 50:'#eef2ff', 100:'#e0e7ff', 200:'#c7d2fe', 300:'#a5b4fc' },
-            soft: { green:'#f0fdf4', blue:'#eff6ff', amber:'#fffbeb' }
-          },
-          boxShadow:{ zen:'0 2px 12px rgba(15,23,42,0.06)' }
-        }
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          zen: { bg:'#f5efe6', fg:'#2b2118', card:'#fffaf3', line:'#e8dfd3', hint:'#7a6a5a' },
+          accent: { 50:'#fff6e5', 100:'#fbe8c8', 200:'#f4d6a8', 300:'#e7b978' },
+          soft: { green:'#f3f8f1', blue:'#f0f5fa', amber:'#fff6e5' }
+        },
+        boxShadow:{ zen:'0 2px 12px rgba(58,42,32,0.06)' }
       }
     }
+  }
   </script>
 
   <!-- Supabase v2 -->
@@ -28,13 +28,17 @@
 
   <!-- Zen CSS -->
   <link rel="stylesheet" href="./assets/css/index-zen.css" />
+  <!-- head에 기존 index-zen.css 다음 줄에 추가 -->
+  <link rel="stylesheet" href="./assets/css/theme-wood.css?v=20250825">
+
 
   <style>
     html, body { background:#f6f7f5; color:#0f172a; }
     .card { background:#fff; border:1px solid #e7e5e4; border-radius:16px; box-shadow:var(--shadow,0 2px 12px rgba(15,23,42,.04)); }
     .h-title { font-size:clamp(18px,2vw,22px); font-weight:700; }
     .hint { color:#64748b; }
-    .btn { border:1px solid #e7e5e4; border-radius:12px; padding:10px 14px; background:#fff; transition:transform .02s linear, box-shadow .2s ease; position:relative; overflow:hidden; }
+    /*.btn { border:1px solid #e7e5e4; border-radius:12px; padding:10px 14px; background:#fff; transition:transform .02s linear, box-shadow .2s ease; position:relative; overflow:hidden; }*/
+    .btn { border:1px solid #e7e5e4; border-radius:12px; padding:10px 14px; transition:transform .02s linear, box-shadow .2s ease; position:relative; overflow:hidden; }
     .btn:active { transform: translateY(1px); }
     .btn-prim { background:#0f172a; color:#fff; border-color:#0f172a; }
     .tabs { border:1px solid #e7e5e4; background:#fff; border-radius:9999px; padding:4px; display:inline-flex; gap:4px; }
