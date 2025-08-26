@@ -79,5 +79,5 @@ details > summary::-webkit-details-marker { display: none; }
 
 /* XS에서는 멤버 라인은 숨기고(sm부터 보이기) — '…팀원 미등록' 같은 긴 문자열로 인한 깨짐 방지 */
 @media (max-width:640px){
-  .members-line { display:none; }
+  .members-line { display:block; }
 }
