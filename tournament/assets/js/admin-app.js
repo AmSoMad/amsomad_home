@@ -825,8 +825,12 @@ export async function startMatch(matchId){
   ensureSB();
   const sb = AppState.sb;
   const now = new Date().toISOString();
-  const { error } = await sb.from('matches')
+  const { data, error } = await sb.from('matches')
     .update({ status: 'playing', started_at: now, last_action_at: now })
-    .eq('id', matchId);
+    .eq('id', matchId)
+    .eq('status', 'pending')         // ✅ 끝난/진행중 경기 차단
+    .select('id')
+    .maybeSingle();
   if (error) throw error;
+  if (!data) throw new Error('이미 시작되었거나 종료된 경기입니다.');
 }

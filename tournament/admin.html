@@ -48,6 +48,8 @@
     .score-line{display:grid;grid-template-columns:minmax(0,1fr) auto 72px auto 72px auto minmax(0,1fr);align-items:center;gap:.5rem}
     @media (min-width:640px){.score-line{grid-template-columns:minmax(0,1fr) auto 84px auto 84px auto minmax(0,1fr)}}
     .score-input{text-align:center;font-variant-numeric:tabular-nums}.score-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pill{display:inline-block;border:1px solid #e7e5e4;border-radius:9999px;padding:2px 8px;font-size:12px}
+    .pill-live{background:#fde68a;border-color:#fde68a}
 
   </style>
     <!-- head에 기존 index-zen.css 다음 줄에 추가 -->
@@ -100,39 +102,51 @@
 
     <!-- 2) 조편성 -->
     <section class="card p-5">
-      <div class="h-title">2) 조편성</div>
-      <div class="grid lg:grid-cols-4 gap-3 mt-2">
+      <div class="h-title">
+      2) 조편성
+      <span id="groupStatusBadge" class="ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-xs">확인중…</span>
+      </div>
+      <div class="grid gap-3 mt-2 lg:grid-cols-2">
+      <!-- 왼쪽: 설정 -->
+      <div class="space-y-3">
+        <div class="grid gap-3 sm:grid-cols-2">
         <label class="block">
           <div class="hint mb-1">모드</div>
           <select id="selMode" class="border rounded-lg p-2 w-full">
-            <option value="auto">자동(권장)</option>
-            <option value="fullleague">풀리그(전체 5팀 이하)</option>
-            <option value="groups">그룹 리그</option>
+          <option value="auto">자동(권장)</option>
+          <option value="fullleague">풀리그(전체 5팀 이하)</option>
+          <option value="groups">그룹 리그</option>
           </select>
         </label>
         <label class="block">
           <div class="hint mb-1">그룹 크기(명/조)</div>
           <input id="inpGroupSize" type="number" min="2" max="8" value="4" class="border rounded-lg p-2 w-full" />
         </label>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
         <label class="block">
           <div class="hint mb-1">상위 진출 규칙</div>
           <select id="selAdvance" class="border rounded-lg p-2 w-full">
-            <option value="1">조별 1위</option>
-            <option value="2">조별 1~2위</option>
+          <option value="1">조별 1위</option>
+          <option value="2">조별 1~2위</option>
           </select>
         </label>
         <div class="flex items-end gap-2">
           <button id="btnShuffle" class="btn btn-ghost w-full">팀 섞기</button>
           <button id="btnLockGroups" class="btn btn-prim w-full">조편성 확정</button>
         </div>
+        </div>
       </div>
-      <div class="mt-3">
-        <div class="flex gap-2">
-          <button id="btnLoadTeams" class="btn btn-ghost">팀 새로고침</button>
-          <button id="btnPreviewGroups" class="btn btn-ghost">조 미리보기</button>
+      <!-- 오른쪽: 미리보기 및 새로고침 -->
+      <div class="flex flex-col gap-2">
+        <div class="flex gap-2 flex-wrap">
+        <button id="btnLoadTeams" class="btn btn-ghost">팀 새로고침</button>
+        <button id="btnPreviewGroups" class="btn btn-ghost">조 미리보기</button>
         </div>
         <div id="groupPreview" class="grid md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3"></div>
       </div>
+      </div>
+    </section>
     </section>
 
     <!-- 3) 경기 생성 -->
@@ -188,7 +202,19 @@
       </div>
     </section>
 
-    <!-- 4) 기타 -->
+    <!-- 3-3) 코트 현황(관리) -->
+    <section class="card p-5">
+      <div class="h-title">3-3) 코트 현황(관리)</div>
+      <div id="adminCourtBoard" class="mt-2"></div>
+    </section>
+
+    <!-- 3-4) 코트별 스케줄 -->
+    <section class="card p-5">
+      <div class="h-title">3-4) 코트별 스케줄</div>
+      <div id="adminCourtSchedule" class="mt-2"></div>
+    </section>
+    
+      <!-- 4) 기타 -->
     <section class="card p-5">
       <div class="h-title">4) 기타</div>
       <div class="flex flex-wrap gap-2 mt-2">

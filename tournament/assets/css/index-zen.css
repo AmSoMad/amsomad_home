@@ -81,3 +81,12 @@ details > summary::-webkit-details-marker { display: none; }
 @media (max-width:640px){
   .members-line { display:block; }
 }
+
+/* DnD: 그룹 드롭 하이라이트 */
+.group-dropzone { transition: box-shadow .15s, background-color .15s; }
+.group-dropzone.dnd-hover { 
+  box-shadow: inset 0 0 0 2px rgba(180,135,90,.6);
+  background-color: rgba(180,135,90,.06);
+}
+.group-chip[draggable="true"] { cursor: grab; }
+.group-chip.dragging { opacity:.6; }

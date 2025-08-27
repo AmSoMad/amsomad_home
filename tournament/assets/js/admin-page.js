@@ -4,7 +4,7 @@ import {
   parseExcelTextarea, upsertTeams, loadTeams,
   shuffle, planGroups, lockGroups,
   createGroupLeagueMatches, createKnockoutPlaceholders, autoAssignKnockout, assignCourtsInterleaved,
-  listGroupMatches, listKnockout, listMatchesByStage, getMatch, saveMatchScore,
+  listGroupMatches, listKnockout, listMatchesByStage, getMatch, saveMatchScore, startMatch,
   listKnockoutStructured, getTeamMap, labelOrName, setsToString,
   resetTournament, exportJson, subscribeRealtime
 } from './admin-app.js';
@@ -33,6 +33,146 @@ async function loadMembers(){
 function membersStr(teamId){
   const arr = membersMap.get(teamId) || [];
   return arr.length ? `(${arr.join(', ')})` : '(팀원 미등록)';
+}
+
+
+// ===== 코트 스냅샷 공용 유틸 =====
+const STALLED_MINUTES = 10;
+async function fetchCourtSnapshotAdmin(){
+  const { data:list, error } = await AppState.sb.from('matches')
+    .select('id,court_no,court_seq,status,stage,points_to_win,cap,team_a:team_a_id(name),team_b:team_b_id(name),started_at,last_action_at')
+    .not('court_no','is', null)
+    .order('court_no',{ascending:true})
+    .order('court_seq',{ascending:true});
+  if (error) throw error;
+  return list||[];
+}
+function groupByCourt(list){
+  const m = new Map();
+  for (const x of list){ if (!m.has(x.court_no)) m.set(x.court_no, []); m.get(x.court_no).push(x); }
+  return [...m.entries()].sort((a,b)=>a[0]-b[0]);
+}
+function isStalled(m){
+  if (m.status!=='playing') return false;
+  const t = m.last_action_at || m.started_at; if (!t) return false;
+  return ((Date.now()-new Date(t).getTime())/60000) >= STALLED_MINUTES;
+}
+
+// ===== 코트 현황(관리) =====
+async function renderAdminCourtBoard(){
+  const root = document.getElementById('adminCourtBoard'); if (!root) return;
+  try{
+    const list = await fetchCourtSnapshotAdmin();
+    const courts = groupByCourt(list);
+    const stalled = list.filter(isStalled);
+    let html = '';
+    if (stalled.length){
+      html += `<div class="mb-3 p-2 border rounded-lg bg-amber-50"><strong>⚠ 멈춘 경기</strong> (${STALLED_MINUTES}분 이상): ${
+        stalled.map(m=>`코트 ${m.court_no} · ${m.court_seq}번 (${m.team_a?.name||'A'} vs ${m.team_b?.name||'B'})`).join(' , ')
+      }</div>`;
+    }
+    html += `<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">`;
+    for (const [no, arr] of courts){
+      const playing = arr.find(x=>x.status==='playing');
+      const next = arr.find(x=>x.status!=='done' && (!playing || x.court_seq>playing.court_seq));
+      html += `<div class="card p-3 space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="text-lg font-semibold">코트 ${no}</div>
+          <div>${playing?'<span class="pill pill-live">진행중</span>':'<span class="pill">대기</span>'}</div>
+        </div>
+        <div class="border rounded-lg p-2 bg-white">
+          <div class="font-semibold mb-1">현재</div>
+          ${playing ? `
+            <div class="flex items-center justify-between text-sm">
+              <div class="truncate">#${playing.court_seq} ${playing.team_a?.name||'A'} vs ${playing.team_b?.name||'B'}</div>
+              <div class="shrink-0 flex gap-1">
+                <button class="btn px-2 py-1 text-xs" data-win="a" data-id="${playing.id}" data-cap="${playing.cap||25}">${playing.team_a?.name||'A'} 승리</button>
+                <button class="btn px-2 py-1 text-xs" data-win="b" data-id="${playing.id}" data-cap="${playing.cap||25}">${playing.team_b?.name||'B'} 승리</button>
+              </div>
+            </div>` : `<div class="text-sm text-slate-500">현재 진행중인 경기가 없습니다.</div>`}
+        </div>
+        <div class="border rounded-lg p-2 bg-white">
+          <div class="font-semibold mb-1">다음</div>
+          ${next ? `
+            <div class="flex items-center justify-between text-sm">
+              <div class="truncate">#${next.court_seq} ${next.team_a?.name||'A'} vs ${next.team_b?.name||'B'}</div>
+              <div class="shrink-0">
+                <button class="btn px-2 py-1 text-xs" data-start data-id="${next.id}">시작</button>
+              </div>
+            </div>` : `<div class="text-sm text-slate-500">대기 매치 없음</div>`}
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
+    root.innerHTML = html;
+  }catch(e){ console.error('renderAdminCourtBoard', e); root.innerHTML = `<div class="hint">코트 현황을 불러오지 못했습니다.</div>`; }
+}
+
+// 이벤트(승리/시작)
+document.getElementById('adminCourtBoard')?.addEventListener('click', async (e)=>{
+  const winBtn = e.target.closest('[data-win]');
+  if (winBtn){
+    const side = winBtn.dataset.win; const id = winBtn.dataset.id; const cap = parseInt(winBtn.dataset.cap||'25',10);
+    try{
+      const set = side==='a' ? [{a:cap,b:0}] : [{a:0,b:cap}];
+      await saveMatchScore(id, set, 'normal');   // 규칙검증 통과(cap)
+      await renderAdminCourtBoard();
+      await renderAdminCourtSchedule();
+    }catch(err){ alert('저장 실패: ' + err.message); }
+    return;
+  }
+  const startBtn = e.target.closest('[data-start]');
+  if (startBtn){
+    try{
+      await startMatch(startBtn.dataset.id);
+      await renderAdminCourtBoard();
+      await renderAdminCourtSchedule();
+    }catch(err){ alert('시작 실패: ' + err.message); }
+  }
+});
+
+// ===== 코트별 스케줄 =====
+async function renderAdminCourtSchedule(){
+  const wrap = document.getElementById('adminCourtSchedule'); if (!wrap) return;
+  try{
+    const { data:list, error } = await AppState.sb.from('matches')
+      .select('id,court_no,court_seq,status,team_a:team_a_id(name),team_b:team_b_id(name)')
+      .not('court_no','is', null)
+      .order('court_no',{ascending:true})
+      .order('court_seq',{ascending:true});
+    if (error) throw error;
+    const map = new Map();
+    for (const m of (list||[])){ if (!map.has(m.court_no)) map.set(m.court_no, []); map.get(m.court_no).push(m); }
+    const courts = [...map.entries()].sort((a,b)=>a[0]-b[0]);
+    if (!courts.length){ wrap.innerHTML = `<div class="hint">코트에 배정된 경기가 없습니다.</div>`; return; }
+    let html = `<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">`;
+    for (const [no, arr] of courts){
+      const chips = arr.map(m=>{
+        const cls = m.status==='playing' ? 'pill pill-live' : 'pill';
+        return `<span class="${cls}" title="#${m.court_seq} ${m.team_a?.name||'A'} vs ${m.team_b?.name||'B'}">#${m.court_seq}</span>`;
+      }).join(' ');
+      const lines = arr.map(m=>{
+        const st = m.status==='playing' ? '<span class="text-amber-600 font-semibold">진행중</span>'
+                 : m.status==='done'    ? '<span class="text-slate-500">종료</span>'
+                 : '<span class="text-slate-500">대기</span>';
+        return `<li class="flex items-center gap-2">
+          <span class="w-8 shrink-0 text-right text-sm">#${m.court_seq}</span>
+          <span class="flex-1 truncate text-sm">${m.team_a?.name||'A'} vs ${m.team_b?.name||'B'}</span>
+          <span class="shrink-0 text-xs">${st}</span>
+        </li>`;
+      }).join('');
+      html += `<div class="card p-3">
+        <div class="flex items-center justify-between">
+          <div class="text-lg font-semibold">코트 ${no}</div>
+          <div class="hint">총 ${arr.length}경기</div>
+        </div>
+        <div class="mt-2 flex flex-wrap gap-2">${chips}</div>
+        <ol class="mt-2 space-y-1">${lines}</ol>
+      </div>`;
+    }
+    html += `</div>`;
+    wrap.innerHTML = html;
+  }catch(e){ console.error('renderAdminCourtSchedule', e); wrap.innerHTML = `<div class="hint">코트 스케줄을 불러오는 중 문제가 발생했습니다.</div>`; }
 }
 
 // --- 연결 UI 잠금/해제 ---
@@ -80,6 +220,8 @@ async function refreshAllViews(){
   await refreshLists();
   await refreshScoreTable();   // 카드형 UI
   await renderBracket();
+  await renderAdminCourtBoard();
+  await renderAdminCourtSchedule();
 }
 
 async function autoPlanAndPreview(){
@@ -97,6 +239,14 @@ function updateGroupStatus(locked){
   const gcnt = PlanPreviewCache?.groups?.length || 0;
   const el = $('#groupStatusLabel');
   if (el) el.innerText = `조편성 상태: ${locked?'확정됨 ✅':'미확정'} · 팀 ${tcnt} · 그룹 ${gcnt}`;
+  const b = $('#groupStatusBadge');
+  if (b){
+    b.textContent = locked ? '확정됨' : '미확정';
+    b.classList.toggle('bg-[#f7fff7]', locked);
+    b.classList.toggle('border-green-300', locked);
+    b.classList.toggle('bg-[#fffaf0]', !locked);
+    b.classList.toggle('border-amber-200', !locked);
+  }
 }
 
 /* =========================
@@ -240,6 +390,45 @@ $('#btnLockGroups')?.addEventListener('click', async ()=>{
     toast('조편성을 확정했습니다.');
   }catch(e){ console.error(e); toast('조편성 확정 실패: '+e.message); }
 });
+
+// 그룹 사이즈와 총 팀 수에 맞춰 “최대 나머지만큼” 4팀 조를 허용
+function canMoveBetweenGroups(groups, groupSize, fromIdx, toIdx){
+  const total = groups.reduce((s,g)=>s+g.teamIds.length,0);
+  const remainder = total % groupSize;          // 13%3 = 1 → 4팀 조 허용 1개
+  if (remainder === 0) {
+    // 모두 정확히 groupSize만 허용
+    return (groups[toIdx].teamIds.length < groupSize);
+  }
+  const destLen = groups[toIdx].teamIds.length;
+  const srcLen  = groups[fromIdx].teamIds.length;
+  const overCnt = groups.filter(g => g.teamIds.length > groupSize).length;
+  const srcIsOver = srcLen > groupSize;
+
+  // 목적지가 아직 groupSize 미만이면 언제든 이동 OK
+  if (destLen < groupSize) return true;
+
+  // 목적지가 이미 +1 초과면 금지
+  if (destLen >= groupSize + 1) return false;
+
+  // 목적지가 정확히 groupSize → 이동 시 +1이 됨
+  // 1) 아직 overCnt < remainder 이면 허용 (4팀 조를 새로 만드는 케이스)
+  // 2) 혹은 출발지가 4팀 조였다면, 4팀→4팀 이동은 허용(4팀 조의 개수 유지)
+  if (overCnt < remainder) return true;
+  if (srcIsOver) return true;
+
+  return false;
+}
+
+function moveTeam(groups, fromIdx, toIdx, teamId){
+  if (fromIdx === toIdx) return false;
+  const from = groups[fromIdx].teamIds;
+  const to   = groups[toIdx].teamIds;
+  const i = from.indexOf(teamId);
+  if (i < 0) return false;
+  from.splice(i,1);
+  to.push(teamId);            // 끝으로 편입
+  return true;
+}
 
 /* =========================
  * 3) 경기 생성

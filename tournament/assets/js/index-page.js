@@ -145,9 +145,11 @@ function makeScoreCard(m){
 
   // 상태별 미묘한 톤
   const st = (m.status || 'pending');
+  const canStart = (st === 'pending' && m.court_no && m.court_seq);
   if (st==='playing') card.classList.add('state-playing');
   else if (st==='done') card.classList.add('state-done');
   else card.classList.add('state-pending');
+  card.dataset.status = st;
 
   const cap = parseInt(card.dataset.cap,10) || 25;
   const isDone = (m.status === 'done' || !!m.winner_id);
@@ -161,8 +163,10 @@ function makeScoreCard(m){
       </div>
       <div class="card-head__right">
         <span class="badge badge-nowrap">C${m.court_no||"-"} · #${m.court_seq||1}</span>
-        <button class="btn px-3 py-2 text-sm" data-start>시작</button>
+        <div class="flex items-center gap-2"><span class="badge">코트 ${m.court_no||"-"} · ${(m.court_seq||1)}번</span>
+        <button class="btn px-3 py-2 text-sm" data-start ${canStart?'':'disabled'}>시작</button>
         <button class="btn btn-prim px-3 py-2 text-sm ripple" data-save ${readOnly?'disabled':''}>저장</button>
+        </div>
       </div>
     </div>
     <div class="set-row relative border rounded-lg p-3 mt-3 bg-white">
@@ -256,6 +260,7 @@ $('#accordionGroups')?.addEventListener('click', (e)=>{
     (async ()=>{
       try{
         const matchId = card.dataset.matchId;
+        if ((card.dataset.status||'') !== 'pending'){ toast('이미 시작되었거나 종료된 경기입니다.'); return; }
         const courtNo = card.dataset.courtNo ? Number(card.dataset.courtNo) : null;
         const courtSeq = card.dataset.courtSeq ? Number(card.dataset.courtSeq) : null;
         if (!courtNo || !courtSeq){ toast('코트 배정이 필요합니다.'); return; }
@@ -263,8 +268,10 @@ $('#accordionGroups')?.addEventListener('click', (e)=>{
         if ((prev||[]).some(x=>x.status!=='done')){ toast('이전 경기가 아직 종료되지 않았습니다.'); return; }
         const { data:nowPlaying } = await AppState.sb.from('matches').select('id').eq('court_no', courtNo).eq('status','playing').limit(1);
         if (nowPlaying && nowPlaying.length){ toast('해당 코트에서 이미 경기가 진행중입니다.'); return; }
-        await startMatch(matchId);
+        await startMatch(matchId);     // DB 차단 1차
+        card.dataset.status = 'playing';
         toast('경기를 시작했습니다.');
+        await fullRefresh();           // 즉시 반영(실시간 구독 오기 전)
       }catch(e){ console.error(e); toast('시작 실패: '+e.message); }
     })();
   }
