@@ -55,7 +55,7 @@ html, body {
 
 /* 3) App chrome (header/nav/board) */
 .header, .navbar, #courtBoard .card:first-child {
-  background: linear-gradient(180deg, #FFFDF8 0%, #F7F1E7 100%);
+  /*background: linear-gradient(180deg, #FFFDF8 0%, #F7F1E7 100%);*/
   border-bottom: 1px solid var(--zen-line);
 }
 

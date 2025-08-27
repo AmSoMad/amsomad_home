@@ -1,4 +1,4 @@
-// assets/js/admin-page.js
+// assets/js/admin-page.js (patched: hover-to-join DnD + Korean status labels)
 import {
   AppState, connectSupabase, ping,
   parseExcelTextarea, upsertTeams, loadTeams,
@@ -16,6 +16,11 @@ const toast = (msg)=>{ const el = $('#log'); if (el) el.innerText = msg; };
 let PlanPreviewCache = null;
 let tapSelectedId = null;
 let isConnected = false;
+
+// ---- DnD (hover-to-join) state ----
+let draggingTeamId = null;
+let dndHoverTimer = null;
+const DND_HOVER_DELAY = 500; // ms
 
 // --- 멤버 로딩(팀원 표시용) ---
 let membersMap = new Map();
@@ -35,6 +40,12 @@ function membersStr(teamId){
   return arr.length ? `(${arr.join(', ')})` : '(팀원 미등록)';
 }
 
+// ===== 상태 문자열 현지화 =====
+function statusKR(s){
+  if (s === 'playing') return '경기중';
+  if (s === 'done') return '경기종료';
+  return '대기중'; // pending or unknown
+}
 
 // ===== 코트 스냅샷 공용 유틸 =====
 const STALLED_MINUTES = 10;
@@ -78,7 +89,7 @@ async function renderAdminCourtBoard(){
       html += `<div class="card p-3 space-y-2">
         <div class="flex items-center justify-between">
           <div class="text-lg font-semibold">코트 ${no}</div>
-          <div>${playing?'<span class="pill pill-live">진행중</span>':'<span class="pill">대기</span>'}</div>
+          <div>${playing?'<span class="pill pill-live">경기중</span>':'<span class="pill">대기중</span>'}</div>
         </div>
         <div class="border rounded-lg p-2 bg-white">
           <div class="font-semibold mb-1">현재</div>
@@ -89,7 +100,7 @@ async function renderAdminCourtBoard(){
                 <button class="btn px-2 py-1 text-xs" data-win="a" data-id="${playing.id}" data-cap="${playing.cap||25}">${playing.team_a?.name||'A'} 승리</button>
                 <button class="btn px-2 py-1 text-xs" data-win="b" data-id="${playing.id}" data-cap="${playing.cap||25}">${playing.team_b?.name||'B'} 승리</button>
               </div>
-            </div>` : `<div class="text-sm text-slate-500">현재 진행중인 경기가 없습니다.</div>`}
+            </div>` : `<div class="text-sm text-slate-500">현재 경기중인 경기가 없습니다.</div>`}
         </div>
         <div class="border rounded-lg p-2 bg-white">
           <div class="font-semibold mb-1">다음</div>
@@ -152,9 +163,9 @@ async function renderAdminCourtSchedule(){
         return `<span class="${cls}" title="#${m.court_seq} ${m.team_a?.name||'A'} vs ${m.team_b?.name||'B'}">#${m.court_seq}</span>`;
       }).join(' ');
       const lines = arr.map(m=>{
-        const st = m.status==='playing' ? '<span class="text-amber-600 font-semibold">진행중</span>'
-                 : m.status==='done'    ? '<span class="text-slate-500">종료</span>'
-                 : '<span class="text-slate-500">대기</span>';
+        const st = m.status==='playing' ? '<span class="text-amber-600 font-semibold">경기중</span>'
+                 : m.status==='done'    ? '<span class="text-slate-500">경기종료</span>'
+                 : '<span class="text-slate-500">대기중</span>';
         return `<li class="flex items-center gap-2">
           <span class="w-8 shrink-0 text-right text-sm">#${m.court_seq}</span>
           <span class="flex-1 truncate text-sm">${m.team_a?.name||'A'} vs ${m.team_b?.name||'B'}</span>
@@ -224,9 +235,15 @@ async function refreshAllViews(){
   await renderAdminCourtSchedule();
 }
 
+function getGroupSizeFromInput(){
+  const el = $('#inpGroupSize');
+  const v = parseInt(el?.value || '4', 10);
+  return Number.isFinite(v) && v>0 ? v : 4;
+}
+
 async function autoPlanAndPreview(){
   const mode = $('#selMode')?.value || 'auto';
-  const size = parseInt($('#inpGroupSize')?.value || '4', 10);
+  const size = getGroupSizeFromInput();
   const teams = AppState.teamsCache.length ? AppState.teamsCache : await loadTeams();
   const plan = planGroups({ mode, groupSize: size, teams });
   PlanPreviewCache = plan;
@@ -275,7 +292,7 @@ $('#btnLoadTeams')?.addEventListener('click', async ()=>{
 });
 
 /* =========================
- * 2) 조편성
+ * 2) 조편성 (미리보기 + DnD)
  * ========================= */
 $('#btnShuffle')?.addEventListener('click', async ()=>{
   if (!isConnected) { toast('먼저 연결하세요.'); return; }
@@ -288,7 +305,7 @@ $('#btnShuffle')?.addEventListener('click', async ()=>{
 
 $('#btnPreviewGroups')?.addEventListener('click', async ()=>{
   const mode = $('#selMode').value;
-  const size = parseInt($('#inpGroupSize').value || '4', 10);
+  const size = getGroupSizeFromInput();
   const teams = AppState.teamsCache.length ? AppState.teamsCache : await loadTeams();
   const plan = planGroups({ mode, groupSize: size, teams });
   PlanPreviewCache = plan;
@@ -328,6 +345,11 @@ function renderGroupPreview(plan){
   enablePreviewDnD(root, plan);
 }
 
+// ----- plan 조작 유틸 -----
+function reseedPlan(plan){
+  for (const g of plan.groups){ g.teams.forEach((t,i)=> t.seed = i+1); }
+  return plan;
+}
 function findInPlan(plan, teamId){
   for (const g of plan.groups){
     const idx = g.teams.findIndex(x=>String(x.id)===String(teamId));
@@ -343,16 +365,55 @@ function swapInPlan(plan, aId, bId){
   const tmp = A.group.teams[A.idx];
   A.group.teams[A.idx] = B.group.teams[B.idx];
   B.group.teams[B.idx] = tmp;
-  for (const g of plan.groups) g.teams.forEach((t,i)=> t.seed = i+1);
-  return plan;
+  return reseedPlan(plan);
+}
+function canMoveBetweenGroupsPlan(plan, fromCode, toCode){
+  if (!fromCode || !toCode || fromCode===toCode) return false;
+  const groups = plan.groups;
+  const groupSize = getGroupSizeFromInput();
+  const total = groups.reduce((s,g)=> s + (g.teams?.length||0), 0);
+  const remainder = total % groupSize; // 예: 13%3 = 1 → 4팀 조 1개 허용
+  const from = groups.find(g=>g.code===fromCode);
+  const to   = groups.find(g=>g.code===toCode);
+  if (!from || !to) return false;
+  const destLen = to.teams.length;
+  const srcLen  = from.teams.length;
+  const overCnt = groups.filter(g=> g.teams.length > groupSize).length;
+
+  if (destLen < groupSize) return true;           // 아직 미만이면 자유 이동
+  if (destLen >= groupSize + 1) return false;     // 이미 +1 초과 금지
+  if (overCnt < remainder) return true;           // 4팀 조 아직 더 만들 수 있음
+  if (srcLen > groupSize) return true;            // 4팀→4팀 유지 이동 허용
+
+  return false;
+}
+function moveTeamToGroup(plan, teamId, toCode){
+  const A = findInPlan(plan, teamId);
+  if (!A) return false;
+  const srcCode = A.group.code;
+  if (srcCode === toCode) return false;
+  const to = plan.groups.find(g=>g.code===toCode);
+  if (!to) return false;
+  if (to.teams.some(t=> String(t.id) === String(teamId))) return false;
+  const [teamObj] = A.group.teams.splice(A.idx,1);
+  to.teams.push(teamObj); // 끝으로 편입
+  reseedPlan(plan);
+  return true;
+}
+
+// ----- DnD 바인딩 (칩 스왑 + 그룹박스 호버 편입) -----
+function clearHoverTimer(){
+  if (dndHoverTimer){ clearTimeout(dndHoverTimer); dndHoverTimer = null; }
 }
 function enablePreviewDnD(root, plan){
+  // 1) 팀 칩: 스왑 + 탭 스왑
   root.querySelectorAll('.team-pill').forEach(el=>{
     el.addEventListener('dragstart', (e)=>{
-      e.dataTransfer.setData('text/plain', el.dataset.teamId);
+      draggingTeamId = el.dataset.teamId;
+      e.dataTransfer.setData('text/plain', draggingTeamId);
       requestAnimationFrame(()=> el.classList.add('drop-hover'));
     });
-    el.addEventListener('dragend', ()=> el.classList.remove('drop-hover'));
+    el.addEventListener('dragend', ()=> { el.classList.remove('drop-hover'); draggingTeamId = null; clearHoverTimer(); });
     el.addEventListener('dragover', (e)=> e.preventDefault());
     el.addEventListener('dragenter', ()=> el.classList.add('drop-hover'));
     el.addEventListener('dragleave', ()=> el.classList.remove('drop-hover'));
@@ -379,6 +440,43 @@ function enablePreviewDnD(root, plan){
       }
     });
   });
+
+  // 2) 그룹 박스: 드래그 호버 시 자동 편입 + 드롭 지원
+  root.querySelectorAll('.group-box').forEach(box=>{
+    box.addEventListener('dragover', (e)=>{ if (draggingTeamId) e.preventDefault(); });
+    box.addEventListener('dragenter', ()=>{
+      if (!draggingTeamId) return;
+      const toCode = box.dataset.group;
+      const from = findInPlan(plan, draggingTeamId);
+      if (!from) return;
+      if (!canMoveBetweenGroupsPlan(plan, from.group.code, toCode)) return;
+      box.classList.add('drop-hover');
+      clearHoverTimer();
+      dndHoverTimer = setTimeout(()=>{
+        if (moveTeamToGroup(plan, draggingTeamId, toCode)){
+          PlanPreviewCache = plan;
+          renderGroupPreview(plan);
+        }
+      }, DND_HOVER_DELAY);
+    });
+    box.addEventListener('dragleave', ()=>{ box.classList.remove('drop-hover'); clearHoverTimer(); });
+    box.addEventListener('drop', (e)=>{
+      if (!draggingTeamId) return;
+      e.preventDefault();
+      const toCode = box.dataset.group;
+      const from = findInPlan(plan, draggingTeamId);
+      if (from && canMoveBetweenGroupsPlan(plan, from.group.code, toCode)){
+        if (moveTeamToGroup(plan, draggingTeamId, toCode)){
+          PlanPreviewCache = plan;
+          renderGroupPreview(plan);
+        }
+      } else {
+        toast?.('이 조에는 더 이상 팀을 추가할 수 없어요. (균등 분배 규칙)');
+      }
+      box.classList.remove('drop-hover');
+      clearHoverTimer();
+    });
+  });
 }
 
 $('#btnLockGroups')?.addEventListener('click', async ()=>{
@@ -390,45 +488,6 @@ $('#btnLockGroups')?.addEventListener('click', async ()=>{
     toast('조편성을 확정했습니다.');
   }catch(e){ console.error(e); toast('조편성 확정 실패: '+e.message); }
 });
-
-// 그룹 사이즈와 총 팀 수에 맞춰 “최대 나머지만큼” 4팀 조를 허용
-function canMoveBetweenGroups(groups, groupSize, fromIdx, toIdx){
-  const total = groups.reduce((s,g)=>s+g.teamIds.length,0);
-  const remainder = total % groupSize;          // 13%3 = 1 → 4팀 조 허용 1개
-  if (remainder === 0) {
-    // 모두 정확히 groupSize만 허용
-    return (groups[toIdx].teamIds.length < groupSize);
-  }
-  const destLen = groups[toIdx].teamIds.length;
-  const srcLen  = groups[fromIdx].teamIds.length;
-  const overCnt = groups.filter(g => g.teamIds.length > groupSize).length;
-  const srcIsOver = srcLen > groupSize;
-
-  // 목적지가 아직 groupSize 미만이면 언제든 이동 OK
-  if (destLen < groupSize) return true;
-
-  // 목적지가 이미 +1 초과면 금지
-  if (destLen >= groupSize + 1) return false;
-
-  // 목적지가 정확히 groupSize → 이동 시 +1이 됨
-  // 1) 아직 overCnt < remainder 이면 허용 (4팀 조를 새로 만드는 케이스)
-  // 2) 혹은 출발지가 4팀 조였다면, 4팀→4팀 이동은 허용(4팀 조의 개수 유지)
-  if (overCnt < remainder) return true;
-  if (srcIsOver) return true;
-
-  return false;
-}
-
-function moveTeam(groups, fromIdx, toIdx, teamId){
-  if (fromIdx === toIdx) return false;
-  const from = groups[fromIdx].teamIds;
-  const to   = groups[toIdx].teamIds;
-  const i = from.indexOf(teamId);
-  if (i < 0) return false;
-  from.splice(i,1);
-  to.push(teamId);            // 끝으로 편입
-  return true;
-}
 
 /* =========================
  * 3) 경기 생성
@@ -462,7 +521,7 @@ $('#btnAutoAssign')?.addEventListener('click', async ()=>{
 });
 
 /* =========================
- * 4) 스코어 입력 — 카드형 UI (Zen 스타일 튜닝)
+ * 4) 스코어 입력 — 카드형 UI
  * ========================= */
 $('#scoreStage')?.addEventListener('change', refreshScoreTable);
 
@@ -499,13 +558,11 @@ async function refreshScoreTable(){
       const bMembers = m.team_b_id ? membersStr(m.team_b_id) : '(팀원 미등록)';
 
       // 헤드라인 점수(가장 최근 입력 세트 or 1세트)
-      // 점수(단판)
       const sets = m.set_scores || [];
       const headIdx = Math.max(0, sets.length ? sets.length-1 : 0);
       const headA = (typeof sets[headIdx]?.a === 'number') ? sets[headIdx].a : '–';
       const headB = (typeof sets[headIdx]?.b === 'number') ? sets[headIdx].b : '–';
 
-      
       const card = document.createElement('div');
       card.className = 'card p-4 score-card flex flex-col hover:shadow-md transition';
       card.dataset.matchId = m.id;
@@ -551,7 +608,7 @@ async function refreshScoreTable(){
           <span class="hint">(세트 입력칸을 누르면 ${[...new Set([21, base, cap])].filter(v=>v<=cap).sort((a,b)=>a-b).join('/')} 팝오버가 해당 칸 아래에 표시됩니다)</span>
         </div>
 
-        <div class="hint mt-1" data-msg>${m.status || 'pending'}</div>
+        <div class="hint mt-1" data-msg">${statusKR(m.status || 'pending')}</div>
       `;
 
       // 세트 행 렌더
@@ -659,7 +716,7 @@ $('#scoreTable')?.addEventListener('click', (e)=>{
   }
 });
 
-// 입력 변경: 클램핑(0..cap) + 헤드라인 갱신 + Zen 힌트
+// 입력 변경: 클램핑(0..cap) + 헤드라인 갱신
 $('#scoreTable')?.addEventListener('input', (e)=>{
   const input = e.target.closest('input[data-set]');
   if (!input) return;
@@ -845,7 +902,7 @@ async function renderBracket(){
         <div class="teamline"><span class="teamname ${m.team_a_id?'':'tbd'} ${winnerA?'winner':''}">${aName}</span></div>
         <div class="teamline"><span class="teamname ${m.team_b_id?'':'tbd'} ${winnerB?'winner':''}">${bName}</span></div>
         ${setsStr ? `<div class="hint mt-1">${setsStr}</div>` : ``}
-        <div class="hint mt-1">${m.status || 'pending'}${extra}</div>`;
+        <div class="hint mt-1">${statusKR(m.status || 'pending')}${extra}</div>`;
       col.appendChild(box);
     }
     return col;
@@ -889,9 +946,9 @@ function renderMatches(sel, items, showGroup){
 }
 const statusPill = (s)=>{
   const base = 'px-2 py-0.5 text-[11px] rounded-full border';
-  if (s==='done') return `<span class="${base} bg-[#ecfeff]">done</span>`;
-  if (s==='playing') return `<span class="${base} bg-[#eef2ff]">playing</span>`;
-  return `<span class="${base}">pending</span>`;
+  if (s==='done') return `<span class="${base} bg-[#ecfeff]">경기종료</span>`;
+  if (s==='playing') return `<span class="${base} bg-[#eef2ff]">경기중</span>`;
+  return `<span class="${base}">대기중</span>`;
 };
 
 $('#btnReloadAll')?.addEventListener('click', refreshAllViews);
@@ -935,7 +992,6 @@ async function runPreflight(){
       sb.from('matches').select('id,group_id,team_a_id,team_b_id,set_scores,winner_id,status').eq('stage','group'),
       sb.from('matches').select('id,stage,bracket_pos,seed_label_a,seed_label_b,team_a_id,team_b_id,status').in('stage',['qf','sf','final'])
     ]);
-    const errs = [];
     const ok = (msg)=>({ level:'ok', msg });
     const warn = (msg)=>({ level:'warn', msg });
     const bad = (msg)=>({ level:'bad', msg });
@@ -1020,7 +1076,8 @@ async function renderStatusSummary(){
       const line = states.map(s=>{
         const n = agg[`${stg}/${s}`]||0;
         const pill = s==='pending' ? 'border' : s==='playing' ? 'bg-[#eef2ff] border' : 'bg-[#ecfeff] border';
-        return `<span class="px-2 py-0.5 text-[11px] rounded-full ${pill}">${s}:${n}</span>`;
+        const txt = statusKR(s);
+        return `<span class="px-2 py-0.5 text-[11px] rounded-full ${pill}">${txt}:${n}</span>`;
       }).join(' ');
       blocks.push(`<div><span class="font-semibold mr-2">${stg.toUpperCase()}</span>${line}</div>`);
     }
@@ -1035,7 +1092,7 @@ async function renderStatusSummary(){
 // 버튼 바인딩 + 연결 직후 자동 실행
 document.querySelector('#btnPreflight')?.addEventListener('click', runPreflight);
 document.querySelector('#btnStatusSummary')?.addEventListener('click', renderStatusSummary);
-// 연결 완료 시점(refreshAllViews) 뒤에 자동 호출하고 싶다면:
+// 연결 완료 시점(refreshAllViews) 뒤에 자동 호출
 const oldRefreshAllViews = refreshAllViews;
 refreshAllViews = async function(){
   await oldRefreshAllViews();
@@ -1094,9 +1151,13 @@ document.addEventListener('keydown', (e)=>{
 
 // 현재 모드 표시
 async function fetchAdminMode(){
-  const { data } = await AppState.sb.from('app_settings').select('mode').single();
-  const mode = data?.mode || 'prod';
-  document.getElementById('adminModeBadge').textContent = '모드: ' + (mode==='dev'?'개발':'운영');
+  try{
+    const { data } = await AppState.sb.from('app_settings').select('mode').single();
+    const mode = data?.mode || 'prod';
+    document.getElementById('adminModeBadge').textContent = '모드: ' + (mode==='dev'?'개발':'운영');
+  }catch(e){
+    console.warn('모드 조회 실패', e);
+  }
 }
 
 // 모드 전환
