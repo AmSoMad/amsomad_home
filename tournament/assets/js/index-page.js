@@ -27,6 +27,35 @@ const toast = (msg) => {
 let membersMap = new Map();
 let lastFocusedInput = null;
 let groupSearchQuery = '';
+let accordionRenderToken = 0;
+
+/* ===== 간단 debounce ===== */
+const debounce = (fn, ms = 150) => {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+};
+
+function bindTeamSearchOnce() {
+  const el = document.querySelector('#teamSearch');
+  if (!el) return;
+
+  // 같은 페이지에서 스크립트가 2번 로드/실행되는 경우 방지
+  if (el.dataset.bound === '1') return;
+  el.dataset.bound = '1';
+
+  el.addEventListener(
+    'input',
+    debounce((e) => {
+      groupSearchQuery = (e.target.value || '').trim().toLowerCase();
+      renderAccordion();
+    }, 150)
+  );
+}
+
+bindTeamSearchOnce();
 
 /* ===== 앱 모드 ===== */
 AppState.mode = "prod"; // 기본값
@@ -134,7 +163,100 @@ function membersStr(teamId) {
 }
 
 /* ========== 조별 아코디언(경기결과만) ========== */
-async function renderAccordion2() {
+async function renderAccordion() {
+  const token = ++accordionRenderToken;     // ✅ 이번 렌더 요청 토큰
+  const root = document.querySelector('#accordionGroups');
+  if (!root) return;
+
+  // 🔥 list 조회가 오래 걸리는 동안 다음 렌더가 시작될 수 있음
+  const list = await listMatchesByStage('group');
+
+  // ✅ 더 최신 렌더가 이미 시작됐으면(토큰이 바뀌었으면) 이번 렌더는 폐기
+  if (token !== accordionRenderToken) return;
+
+  // 최신 요청만 여기서부터 그리게 됨
+  root.innerHTML = '';
+
+  if (!list.length) {
+    root.innerHTML = `<div class="hint">조별리그 매치가 없습니다.</div>`;
+    return;
+  }
+
+  // 그룹별 묶기
+  const byG = new Map();
+  for (const m of list) {
+    const code = m.groups?.code || '-';
+    byG.set(code, [...(byG.get(code) || []), m]);
+  }
+
+  const codes = [...byG.keys()].sort((a, b) => a.localeCompare(b));
+  let visibleGroups = 0;
+  let visibleMatches = 0;
+
+  // ✅ 현재 검색어 스냅샷 (렌더 중간에 검색어 바뀌어도 일관성 유지)
+  const q = groupSearchQuery;
+
+  for (const code of codes) {
+    const sourceItems = (byG.get(code) || []).sort(
+      (a, b) => (a.round || 0) - (b.round || 0) || a.id - b.id
+    );
+
+    const items = sourceItems.filter((m) => {
+      if (!q) return true;
+      const aName = labelOrName(m, 'a').toLowerCase();
+      const bName = labelOrName(m, 'b').toLowerCase();
+      const aMem = membersStr(m.team_a_id).toLowerCase();
+      const bMem = membersStr(m.team_b_id).toLowerCase();
+      const text = `${code}조 ${aName} ${bName} ${aMem} ${bMem}`;
+      return text.includes(q);
+    });
+
+    if (!items.length) continue;
+    visibleGroups += 1;
+    visibleMatches += items.length;
+
+    // 상태 요약
+    const stat = { pending: 0, playing: 0, done: 0 };
+    for (const m of items) stat[m.status || 'pending'] = (stat[m.status || 'pending'] || 0) + 1;
+
+    const acc = document.createElement('details');
+    acc.className = 'accordion-item border rounded-lg bg-white';
+    acc.open = true;
+
+    const sum = document.createElement('summary');
+    sum.className = 'cursor-pointer list-none select-none px-3 py-2 flex items-center justify-between';
+    sum.innerHTML = `
+      <div class="flex items-center gap-2">
+        <span class="font-semibold">${code}조</span>
+        <span class="badge">pending:${stat.pending || 0}</span>
+        <span class="badge">playing:${stat.playing || 0}</span>
+        <span class="badge">done:${stat.done || 0}</span>
+      </div>
+      <svg class="acc-chevron w-4 h-4 text-slate-500 transition" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.25 4.25a.75.75 0 01-1.08 0L5.25 8.27a.75.75 0 01-.02-1.06z"/></svg>
+    `;
+    acc.appendChild(sum);
+
+    const cont = document.createElement('div');
+    cont.className = 'grid md:grid-cols-2 gap-3 p-3 pt-0';
+    for (const m of items) cont.appendChild(makeScoreCard(m));
+    acc.appendChild(cont);
+
+    root.appendChild(acc);
+  }
+
+  const meta = document.querySelector('#searchMeta');
+  if (meta) {
+    if (!q) meta.textContent = `전체 ${codes.length}개 조 · ${list.length}경기`;
+    else meta.textContent = `검색 결과 ${visibleGroups}개 조 · ${visibleMatches}경기`;
+  }
+
+  if (!root.children.length) {
+    root.innerHTML = `<div class="hint">검색 결과가 없습니다.</div>`;
+  }
+}
+
+/* ========== 조별 아코디언(경기결과만) ========== */
+async function renderAccordion3() {
   const root = $("#accordionGroups");
   if (!root) return;
   root.innerHTML = "";
@@ -192,7 +314,7 @@ async function renderAccordion2() {
   }
 }
 /* ========== 조별 아코디언(경기결과만) ========== */
-async function renderAccordion(){
+async function renderAccordion2(){
   const root = $('#accordionGroups'); if (!root) return;
   root.innerHTML = '';
 
