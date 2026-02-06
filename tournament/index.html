@@ -1,26 +1,28 @@
 <!doctype html>
 <html lang="ko">
+
 <head>
   <meta charset="utf-8" />
   <title>마루클럽 토너먼트 · 경기/순위</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="supabase-url" content="https://atjxeiquqhihykpxiaxt.supabase.co">
-  <meta name="supabase-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0anhlaXF1cWhpaHlrcHhpYXh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMDc4NjMsImV4cCI6MjA3MDU4Mzg2M30.kgxY_1meq10y6lhI-wQhX5QPbfyXk4eIkp1o-iJ1Bpk">
+  <meta name="supabase-key"
+    content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0anhlaXF1cWhpaHlrcHhpYXh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMDc4NjMsImV4cCI6MjA3MDU4Mzg2M30.kgxY_1meq10y6lhI-wQhX5QPbfyXk4eIkp1o-iJ1Bpk">
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          zen: { bg:'#f5efe6', fg:'#2b2118', card:'#fffaf3', line:'#e8dfd3', hint:'#7a6a5a' },
-          accent: { 50:'#fff6e5', 100:'#fbe8c8', 200:'#f4d6a8', 300:'#e7b978' },
-          soft: { green:'#f3f8f1', blue:'#f0f5fa', amber:'#fff6e5' }
-        },
-        boxShadow:{ zen:'0 2px 12px rgba(58,42,32,0.06)' }
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            zen: { bg: '#f5efe6', fg: '#2b2118', card: '#fffaf3', line: '#e8dfd3', hint: '#7a6a5a' },
+            accent: { 50: '#fff6e5', 100: '#fbe8c8', 200: '#f4d6a8', 300: '#e7b978' },
+            soft: { green: '#f3f8f1', blue: '#f0f5fa', amber: '#fff6e5' }
+          },
+          boxShadow: { zen: '0 2px 12px rgba(58,42,32,0.06)' }
+        }
       }
     }
-  }
   </script>
 
   <!-- Supabase v2 -->
@@ -33,32 +35,137 @@
 
 
   <style>
-    html, body { background:#f6f7f5; color:#0f172a; }
-    .card { background:#fff; border:1px solid #e7e5e4; border-radius:16px; box-shadow:var(--shadow,0 2px 12px rgba(15,23,42,.04)); }
-    .h-title { font-size:clamp(18px,2vw,22px); font-weight:700; }
-    .hint { color:#64748b; }
+    html,
+    body {
+      background: #f6f7f5;
+      color: #0f172a;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e7e5e4;
+      border-radius: 16px;
+      box-shadow: var(--shadow, 0 2px 12px rgba(15, 23, 42, .04));
+    }
+
+    .h-title {
+      font-size: clamp(18px, 2vw, 22px);
+      font-weight: 700;
+    }
+
+    .hint {
+      color: #64748b;
+    }
+
     /*.btn { border:1px solid #e7e5e4; border-radius:12px; padding:10px 14px; background:#fff; transition:transform .02s linear, box-shadow .2s ease; position:relative; overflow:hidden; }*/
-    .btn { border:1px solid #e7e5e4; border-radius:12px; padding:10px 14px; transition:transform .02s linear, box-shadow .2s ease; position:relative; overflow:hidden; }
-    .btn:active { transform: translateY(1px); }
-    .btn-prim { background:#0f172a; color:#fff; border-color:#0f172a; }
-    .tabs { border:1px solid #e7e5e4; background:#fff; border-radius:9999px; padding:4px; display:inline-flex; gap:4px; }
-    .tab-btn { border-radius:9999px; padding:8px 14px; font-weight:600; color:#334155; }
-    .tab-btn.active { background:#0f172a; color:#fff; }
-    .badge { border:1px solid #e7e5e4; border-radius:9999px; padding:2px 8px; font-size:11px; }
-    .accordion-item[open] .acc-chevron { transform: rotate(180deg); }
+    .btn {
+      border: 1px solid #e7e5e4;
+      border-radius: 12px;
+      padding: 10px 14px;
+      transition: transform .02s linear, box-shadow .2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn-prim {
+      background: #0f172a;
+      color: #fff;
+      border-color: #0f172a;
+    }
+
+    .tabs {
+      border: 1px solid #e7e5e4;
+      background: #fff;
+      border-radius: 9999px;
+      padding: 4px;
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      border-radius: 9999px;
+      padding: 8px 14px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .tab-btn.active {
+      background: #0f172a;
+      color: #fff;
+    }
+
+    .badge {
+      border: 1px solid #e7e5e4;
+      border-radius: 9999px;
+      padding: 2px 8px;
+      font-size: 11px;
+    }
+
+    .accordion-item[open] .acc-chevron {
+      transform: rotate(180deg);
+    }
 
     /* Bracket 기본 */
-    .bracket-col { display:flex; flex-direction:column; gap:14px; min-width:220px; }
-    .bracket-box { border:1px solid #e7e5e4; border-radius:12px; background:#fff; padding:10px 12px; }
-    .teamline { display:flex; justify-content:space-between; gap:8px; }
-    .teamname { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .tbd { color:#94a3b8; font-style:italic; }
-    .winner { font-weight:700; }
-    .stage-title { font-weight:700; font-size:14px; margin-bottom:6px; color:#334155; }
-    .bracket-wrap { overflow:auto; }
-    .bracket-grid { display:flex; gap:18px; min-height: 100%; }
+    .bracket-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 220px;
+    }
+
+    .bracket-box {
+      border: 1px solid #e7e5e4;
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px 12px;
+    }
+
+    .teamline {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .teamname {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tbd {
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    .winner {
+      font-weight: 700;
+    }
+
+    .stage-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: #334155;
+    }
+
+    .bracket-wrap {
+      overflow: auto;
+    }
+
+    .bracket-grid {
+      display: flex;
+      gap: 18px;
+      min-height: 100%;
+    }
+    .input { border:1px solid #d6d3d1; border-radius:10px; padding:10px 12px; background:#fff; min-width:220px; }
   </style>
 </head>
+
 <body class="min-h-screen">
   <header class="max-w-7xl mx-auto px-4 py-6">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -71,7 +178,7 @@
           <button class="tab-btn active" data-tabto="games">경기</button>
           <button class="tab-btn" data-tabto="courts">코트</button>
           <button class="tab-btn" data-tabto="standings">순위</button>
-        </div>        
+        </div>
         <button id="btnRefresh" class="btn">새로고침</button>
         <a href="./pinball.html" class="btn">추첨</a>
       </div>
@@ -84,6 +191,14 @@
     <section id="courtBoard" class="space-y-3"></section>
     <!-- 탭: 경기 -->
     <section id="tab-games" class="space-y-6">
+      <section class="card p-4">
+        <div class="toolbar">
+          <input id="teamSearch" class="input" placeholder="팀명/조 검색 (예: A조, 마루)">
+          <button id="btnExpandAll" class="chip-btn">전체 펼치기</button>
+          <button id="btnCollapseAll" class="chip-btn">전체 접기</button>
+          <span id="searchMeta" class="hint text-sm">전체 4개 조 · 24경기</span>
+        </div>
+      </section>
       <!-- 1) 조별리그 (아코디언: 경기결과만) -->
       <section class="card p-6">
         <div class="h-title">조별리그</div>
@@ -141,4 +256,5 @@
   <script type="module" src="./assets/js/admin-app.js"></script>
   <script type="module" src="./assets/js/index-page.js"></script>
 </body>
+
 </html>

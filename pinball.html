@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>마루클럽 · 핀볼 추첨</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- 기존 페이지와 동일한 Supabase 메타 (자동 연결용) -->
+  <meta name="supabase-url" content="https://atjxeiquqhihykpxiaxt.supabase.co">
+  <meta name="supabase-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0anhlaXF1cWhpaHlrcHhpYXh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMDc4NjMsImV4cCI6MjA3MDU4Mzg2M30.kgxY_1meq10y6lhI-wQhX5QPbfyXk4eIkp1o-iJ1Bpk">
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            zen: { bg:'#f6f7f5', fg:'#0f172a', card:'#ffffff', line:'#e7e5e4', hint:'#64748b' }
+          },
+          boxShadow:{ zen:'0 2px 12px rgba(15,23,42,0.06)' }
+        }
+      }
+    }
+  </script>
+
+  <!-- Supabase v2 -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <!-- Zen 스타일 공용 -->
+  <link rel="stylesheet" href="./assets/css/index-zen.css" />
+  <style>
+    html, body { background:#f6f7f5; color:#0f172a; }
+    .card { background:#fff; border:1px solid #e7e5e4; border-radius:16px; box-shadow:0 2px 12px rgba(15,23,42,.04); }
+    .h-title{ font-size:clamp(18px,2vw,22px); font-weight:700; }
+    .hint{ color:#64748b; }
+    .btn{ border:1px solid #e7e5e4; border-radius:12px; padding:10px 14px; background:#fff; transition:transform .02s linear, box-shadow .2s ease; }
+    .btn:active{ transform:translateY(1px); }
+    .btn-prim{ background:#0f172a; color:#fff; border-color:#0f172a; }
+    .badge { border:1px solid #e7e5e4; border-radius:9999px; padding:2px 8px; font-size:11px; }
+    .pill{ display:inline-block; border:1px solid #e7e5e4; border-radius:9999px; padding:2px 8px; font-size:12px; }
+    .pill-live{ background:#fde68a; border-color:#fde68a; }
+
+    /* 캔버스 래퍼 */
+    #boardWrap{ position:relative; }
+    #pinballCanvas{ display:block; width:100%; height:520px; background:linear-gradient(180deg,#fafafa,#f1f5f9); border:1px solid #e7e5e4; border-radius:16px; }
+    #finishLine{ position:absolute; left:0; right:0; bottom:64px; height:2px; background:repeating-linear-gradient(90deg,#64748b 0 12px, transparent 12px 20px); opacity:.5; pointer-events:none; }
+    #winnerOverlay{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; backdrop-filter:blur(2px); }
+    #winnerCard{ background:#0f172a; color:#fff; border-radius:16px; padding:18px 20px; box-shadow:0 8px 32px rgba(15,23,42,.25); }
+
+    /* 플링코 핀 시각 */
+    .peg{ position:absolute; width:8px; height:8px; border-radius:9999px; background:#cbd5e1; transform:translate(-50%,-50%); pointer-events:none; opacity:.85; }
+
+    /* 작은 컨페티 느낌 */
+    .confetti{ position:absolute; width:6px; height:10px; opacity:.9; }
+  </style>
+</head>
+<body class="min-h-screen">
+  <header class="max-w-7xl mx-auto px-4 py-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold">마루클럽 · 핀볼 추첨</h1>
+        <p class="hint mt-1">재미 + 공정성 · 첫 결승선 통과 이름이 당첨!</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="./index.html" class="btn">← 경기/순위</a>
+        <span id="modeBadge" class="badge">모드: 확인중…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 pb-24 space-y-6">
+    <!-- 1) 참가자/상품 -->
+    <section class="card p-6">
+      <div class="h-title">1) 참가자 & 상품</div>
+      <div class="grid lg:grid-cols-2 gap-4 mt-3">
+        <!-- 참가자 -->
+        <div>
+          <div class="flex items-center justify-between">
+            <div class="font-semibold">참가자 (한 줄 = 한 명)</div>
+            <div class="flex gap-2">
+              <button id="btnLoadTeams" class="btn">팀명 불러오기</button>
+              <button id="btnLoadMembers" class="btn">팀원 불러오기</button>
+              <button id="btnSampleNames" class="btn">샘플</button>
+            </div>
+          </div>
+          <textarea id="taNames" rows="10" class="mt-2 w-full border rounded-lg p-3" placeholder="예)&#10;김민준&#10;박서진&#10;최정건"></textarea>
+          <div class="hint mt-2">많으면 최대 120명까지 한 번에 경주(랜덤 120명 샘플링).</div>
+        </div>
+        <!-- 상품 -->
+        <div>
+          <div class="flex items-center justify-between">
+            <div class="font-semibold">상품 목록</div>
+            <div class="flex gap-2">
+              <input id="prizeName" class="border rounded-lg p-2" placeholder="상품명" />
+              <input id="prizeQty" type="number" min="1" class="border rounded-lg p-2 w-24" placeholder="수량" />
+              <button id="btnAddPrize" class="btn btn-prim">추가</button>
+            </div>
+          </div>
+          <div class="border rounded-lg bg-white mt-2">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b">
+                  <th class="text-left p-2">상품</th>
+                  <th class="p-2">남은수량</th>
+                  <th class="p-2">배정</th>
+                  <th class="p-2"></th>
+                </tr>
+              </thead>
+              <tbody id="prizeTbody"></tbody>
+            </table>
+          </div>
+          <div class="flex items-center gap-2 mt-2">
+            <label class="inline-flex items-center gap-2">
+              <input id="autoAssign" type="checkbox" class="accent-black" checked />
+              <span class="text-sm">게임 끝나면 다음 상품 자동 배정</span>
+            </label>
+            <button id="btnClearPrizes" class="btn">상품 초기화</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2) 게임 설정/보드 -->
+    <section class="card p-6">
+    <div class="h-title">2) 룰렛 추첨 (임베드)</div>
+    <div class="relative" style="height: calc(100dvh - 220px);">
+        <iframe
+        id="myIframe"
+        src="https://lazygyu.github.io/roulette/"
+        class="w-full h-full rounded-lg border"
+        loading="lazy"
+        referrerpolicy="no-referrer">
+        </iframe>
+    </div>
+    <p class="hint mt-2">
+        외부 페이지 임베드(읽기 전용). 당첨 결과를 자동 기록하려면 우리 쪽 페이지에서 수동 입력 버튼 또는 자체 게임을 사용하세요.
+    </p>
+    </section>
+
+    <!-- 3) 결과 로그 -->
+    <section class="card p-6">
+      <div class="h-title">3) 결과</div>
+      <div class="flex items-center gap-2 mt-2">
+        <button id="btnExportLog" class="btn">JSON 내보내기</button>
+        <button id="btnClearLog" class="btn">로그 초기화</button>
+      </div>
+      <div class="border rounded-lg bg-white mt-3">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b">
+              <th class="text-left p-2">시간</th>
+              <th class="text-left p-2">이름</th>
+              <th class="text-left p-2">상품</th>
+            </tr>
+          </thead>
+          <tbody id="logTbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- 공용 비즈 로직 모듈 재사용 -->
+  <script type="module" src="./assets/js/admin-app.js"></script>
+  <!-- 핀볼 페이지 -->
+  <script type="module" src="./assets/js/pinball-page.js"></script>
+</body>
+</html>
