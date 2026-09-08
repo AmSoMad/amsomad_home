@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="배드민턴 레슨 일정을 선택하고 공유용 이미지로 저장하는 로컬 캘린더"
+    />
+    <meta name="theme-color" content="#6d39e7" />
+    <title>콕콕 레슨 캘린더</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="콕콕 레슨 캘린더 처음으로">
+        <span class="brand-mark" aria-hidden="true">
+          <img src="./assets/maru-logo.png" data-maru-logo alt="" />
+        </span>
+        <span>
+          <strong>콕콕</strong>
+          <small>레슨 캘린더</small>
+        </span>
+      </a>
+      <div class="top-actions">
+        <span class="saved-state" id="savedState" aria-live="polite">이 기기에 자동 저장돼요</span>
+        <button class="button button-ghost desktop-only" id="resetButton" type="button">
+          처음부터
+        </button>
+        <button class="button button-primary" id="downloadButton" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14" />
+          </svg>
+          PNG 저장
+        </button>
+      </div>
+    </header>
+
+    <nav class="mobile-tabs" aria-label="화면 전환">
+      <button class="mobile-tab is-active" type="button" data-mobile-view="edit" aria-pressed="true">
+        일정 설정
+      </button>
+      <button class="mobile-tab" type="button" data-mobile-view="preview" aria-pressed="false">
+        미리보기
+      </button>
+    </nav>
+
+    <main class="workspace" id="top" data-mobile-view="edit">
+      <section class="editor" aria-labelledby="editor-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">SCHEDULE EDITOR</p>
+            <h1 id="editor-title">이번 달 레슨을 정해볼까요?</h1>
+          </div>
+          <span class="step-pill">한 번 더 누르면 휴강(X)이 돼요</span>
+        </div>
+
+        <section class="panel basics-panel" aria-labelledby="basics-title">
+          <div class="panel-title-row">
+            <span class="panel-number">01</span>
+            <div>
+              <h2 id="basics-title">기본 정보</h2>
+              <p>이미지 상단에 표시될 내용이에요.</p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <label class="field">
+              <span>대상 연월</span>
+              <input id="targetMonth" type="month" />
+            </label>
+            <label class="field">
+              <span>코치님 이름</span>
+              <input id="coachName" type="text" maxlength="18" placeholder="예: 쌍둥이 코치님" />
+            </label>
+            <label class="field field-wide">
+              <span>한 줄 인사</span>
+              <input
+                id="greeting"
+                type="text"
+                maxlength="46"
+                placeholder="예: 매일 조금씩 성장하는 우리, 코트에서 만나요!"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section class="schedule-editor-section" aria-labelledby="schedule-title">
+          <div class="panel-title-row schedule-section-title">
+            <span class="panel-number">02</span>
+            <div>
+              <h2 id="schedule-title">레슨 일정</h2>
+              <p>날짜를 반복해서 눌러 레슨일과 휴강일을 정하세요.</p>
+            </div>
+          </div>
+          <div class="holiday-summary" id="holidaySummary" aria-live="polite"></div>
+          <div id="scheduleEditors" class="schedule-editors"></div>
+        </section>
+
+        <section class="panel notice-panel" aria-labelledby="notice-title">
+          <div class="panel-title-row">
+            <span class="panel-number">03</span>
+            <div>
+              <h2 id="notice-title">안내 문구</h2>
+              <p>이미지 하단에 들어갈 내용을 적어주세요.</p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <label class="field field-wide">
+              <span>첫 번째 안내</span>
+              <input id="noticeOne" type="text" maxlength="54" />
+            </label>
+            <label class="field field-wide">
+              <span>두 번째 안내</span>
+              <input id="noticeTwo" type="text" maxlength="54" />
+            </label>
+            <label class="field field-wide">
+              <span>맨 아래 문구</span>
+              <input id="footerMessage" type="text" maxlength="42" />
+            </label>
+          </div>
+        </section>
+
+        <button class="button button-ghost mobile-reset" id="mobileResetButton" type="button">
+          모든 내용을 처음으로 되돌리기
+        </button>
+      </section>
+
+      <aside class="preview-pane" aria-labelledby="preview-title">
+        <div class="preview-toolbar">
+          <div>
+            <p class="eyebrow">LIVE PREVIEW</p>
+            <h2 id="preview-title">공유 이미지 미리보기</h2>
+          </div>
+          <div class="preview-actions">
+            <button class="icon-button" id="shareButton" type="button" aria-label="이미지 공유">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="18" cy="5" r="2.5" />
+                <circle cx="6" cy="12" r="2.5" />
+                <circle cx="18" cy="19" r="2.5" />
+                <path d="M8.2 10.8l7.6-4.5M8.2 13.2l7.6 4.5" />
+              </svg>
+            </button>
+            <button class="button button-dark" id="downloadPreviewButton" type="button">
+              PNG 저장
+            </button>
+          </div>
+        </div>
+
+        <div class="preview-stage" id="previewStage">
+          <div class="poster-frame" id="posterFrame">
+            <article class="poster" id="poster" aria-label="레슨 일정 이미지 미리보기">
+              <div class="poster-noise"></div>
+              <div class="poster-orb poster-orb-one"></div>
+              <div class="poster-orb poster-orb-two"></div>
+
+              <header class="poster-header">
+                <div class="poster-logo">
+                  <img src="./assets/maru-logo.png" data-maru-logo alt="MARU 배드민턴 로고" />
+                </div>
+                <div class="coach-label">
+                  <span class="coach-label-dot"></span>
+                  <span id="posterCoach">쌍둥이 코치님</span>
+                  <span class="coach-label-dot"></span>
+                </div>
+                <div class="poster-title-row">
+                  <div class="month-badge">
+                    <span id="posterMonthNumber">9</span>
+                    <small>월</small>
+                  </div>
+                  <div class="poster-title-copy">
+                    <p id="posterYear">2026 BADMINTON LESSON</p>
+                    <h2>레슨 일정 안내</h2>
+                  </div>
+                </div>
+                <div class="greeting-ribbon">
+                  <span class="ribbon-line"></span>
+                  <p id="posterGreeting">매일 조금씩 성장하는 우리, 코트에서 만나요!</p>
+                  <span class="ribbon-line"></span>
+                </div>
+              </header>
+
+              <section class="poster-schedules" id="posterSchedules"></section>
+
+              <footer class="poster-footer">
+                <div class="footer-kicker">
+                  <span class="footer-symbol" aria-hidden="true">
+                    <svg viewBox="0 0 44 44">
+                      <circle class="symbol-ring" cx="22" cy="22" r="17" />
+                      <path d="M22 12v13" />
+                      <circle class="symbol-dot" cx="22" cy="31" r="1.7" />
+                    </svg>
+                  </span>
+                  <div>
+                    <small>PLEASE CHECK</small>
+                    <strong>꼭 확인해주세요!</strong>
+                  </div>
+                </div>
+                <div class="notice-list">
+                  <p><span>✓</span><b id="posterNoticeOne"></b></p>
+                  <p><span>✓</span><b id="posterNoticeTwo"></b></p>
+                </div>
+                <div class="footer-band">
+                  <span>COCK · GROW · SMILE</span>
+                  <strong id="posterFooterMessage"></strong>
+                  <span>LESSON CALENDAR</span>
+                </div>
+              </footer>
+            </article>
+          </div>
+        </div>
+        <p class="preview-hint">
+          미리보기 날짜를 눌러도 일정이 바뀝니다. 저장 이미지는 1080 × 1080px입니다.
+        </p>
+      </aside>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./assets/maru-logo-data.js"></script>
+    <script src="./vendor/korean-holidays.js"></script>
+    <script src="./vendor/dom-export.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
