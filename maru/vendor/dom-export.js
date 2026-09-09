@@ -124,11 +124,13 @@
     );
   }
 
-  function render(node, options) {
+  function renderCanvas(node, options) {
     options = Object.assign({ width: node.offsetWidth, height: node.offsetHeight, scale: 1 }, options);
     return nodeToSvg(node, options).then(function (svg) {
-      var blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-      var url = URL.createObjectURL(blob);
+      // Some hosted pages disallow blob: image sources through their CSP.  An
+      // encoded data URL keeps the whole render self-contained and works on
+      // static hosting as well as file:// pages.
+      var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 
       return new Promise(function (resolve, reject) {
         var image = new Image();
@@ -141,18 +143,12 @@
             context.imageSmoothingEnabled = true;
             context.imageSmoothingQuality = "high";
             context.drawImage(image, 0, 0, canvas.width, canvas.height);
-            URL.revokeObjectURL(url);
-            canvas.toBlob(function (pngBlob) {
-              if (pngBlob) resolve(pngBlob);
-              else reject(new Error("이미지를 만들지 못했습니다."));
-            }, "image/png", 1);
+            resolve(canvas);
           } catch (error) {
-            URL.revokeObjectURL(url);
             reject(error);
           }
         };
         image.onerror = function () {
-          URL.revokeObjectURL(url);
           reject(new Error("미리보기를 이미지로 변환하지 못했습니다."));
         };
         image.src = url;
@@ -160,18 +156,53 @@
     });
   }
 
-  function download(blob, filename) {
-    var url = URL.createObjectURL(blob);
+  function render(node, options) {
+    return renderCanvas(node, options).then(function (canvas) {
+      return new Promise(function (resolve, reject) {
+        canvas.toBlob(function (pngBlob) {
+          if (pngBlob) resolve(pngBlob);
+          else reject(new Error("이미지를 만들지 못했습니다."));
+        }, "image/png", 1);
+      });
+    });
+  }
+
+  function renderDataUrl(node, options) {
+    return renderCanvas(node, options).then(function (canvas) {
+      return canvas.toDataURL("image/png", 1);
+    });
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    var parts = dataUrl.split(",");
+    var mimeMatch = parts[0].match(/data:([^;]+)/);
+    var binary = atob(parts[1]);
+    var bytes = new Uint8Array(binary.length);
+    for (var index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return new Blob([bytes], { type: mimeMatch ? mimeMatch[1] : "image/png" });
+  }
+
+  function download(file, filename) {
+    var isDataUrl = typeof file === "string" && file.indexOf("data:") === 0;
+    var url = isDataUrl ? file : URL.createObjectURL(file);
     var link = document.createElement("a");
     link.download = filename;
     link.href = url;
+    link.rel = "noopener";
     document.body.appendChild(link);
     link.click();
     link.remove();
-    window.setTimeout(function () {
-      URL.revokeObjectURL(url);
-    }, 1000);
+    if (!isDataUrl) {
+      window.setTimeout(function () {
+        URL.revokeObjectURL(url);
+      }, 1000);
+    }
   }
 
-  global.DomExport = { render: render, download: download };
+  global.DomExport = {
+    render: render,
+    renderDataUrl: renderDataUrl,
+    dataUrlToBlob: dataUrlToBlob,
+    download: download,
+  };
 })(window);

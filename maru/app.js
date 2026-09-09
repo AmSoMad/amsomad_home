@@ -554,9 +554,13 @@
     return `${year}년-${Number(month)}월-레슨일정.png`;
   }
 
-  async function createImageBlob() {
+  async function createImageDataUrl() {
     if (document.fonts?.ready) await document.fonts.ready;
-    return window.DomExport.render(elements.poster, { width: 1080, height: 1080, scale: 1 });
+    return window.DomExport.renderDataUrl(elements.poster, { width: 1080, height: 1080, scale: 1 });
+  }
+
+  async function createImageBlob() {
+    return window.DomExport.dataUrlToBlob(await createImageDataUrl());
   }
 
   async function downloadImage(button) {
@@ -564,8 +568,8 @@
     button.disabled = true;
     button.textContent = "이미지 만드는 중…";
     try {
-      const blob = await createImageBlob();
-      window.DomExport.download(blob, fileName());
+      const dataUrl = await createImageDataUrl();
+      window.DomExport.download(dataUrl, fileName());
       showToast("PNG 이미지를 저장했어요.");
     } catch (error) {
       console.error(error);

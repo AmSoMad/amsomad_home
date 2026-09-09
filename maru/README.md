@@ -21,6 +21,8 @@ python -m http.server 4173
 
 별도 빌드 명령은 필요하지 않습니다. 입력 내용은 각 기기의 브라우저 저장소에만 보관되며, 인터넷 서버로 전송되지 않습니다.
 
+기존 주소에 업데이트할 때는 `index.html`, `app.js`, `styles.css`, `vendor`, `assets`를 함께 업로드하세요. `index.html`에는 갱신 번호가 포함되어 있어 새 PNG 저장 모듈이 브라우저 캐시보다 우선 적용됩니다.
+
 ## 파일 구성
 
 - `index.html`: 화면 구조
