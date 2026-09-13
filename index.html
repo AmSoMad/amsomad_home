@@ -1,618 +1,322 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-  <meta charset="utf-8">
-  <meta content="width=device-width, initial-scale=1.0" name="viewport">
-
-  <title>AmsoMad</title>
-  <meta content="" name="description">
-  <meta content="" name="keywords">
-
-  <!-- Favicons -->
-  <link href="assets/img/favicon.ico" rel="icon">
-  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
-
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Raleway:300,300i,400,400i,500,500i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
-
-  <!-- Vendor CSS Files -->
-  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-  <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
-  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
-  <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
-  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
-
-  <!-- Template Main CSS File -->
-  <link href="assets/css/style.css" rel="stylesheet">
-
-</head>
-
-<body>
-
-  <!-- ======= Header ======= -->
-  <header id="header">
-    <div class="container">
-
-      <h1><a href="index.html">Amso Mad </a></h1>
-      <h2>난 결코 <span>늦지않은</span> 사람이다.</h2>
-
-      <nav id="navbar" class="navbar">
-        <ul>
-          <li><a class="nav-link active" href="#header">Home</a></li>
-          <li><a class="nav-link" href="#about">About</a></li>
-          <li><a class="nav-link" href="#resume">Resume</a></li>
-          <!-- <li><a class="nav-link" href="#services">Services</a></li> -->
-          <li><a class="nav-link" href="#portfolio">Portfolio</a></li>
-          <!-- <li><a class="nav-link" href="#contact">Contact</a></li> -->
-        </ul>
-        <i class="bi bi-list mobile-nav-toggle"></i>
-      </nav><!-- .navbar -->
-
-      <div class="social-links">
-        <!-- <a href="#" class="twitter"><i class="bi bi-twitter"></i></a> -->
-        <!-- <a href="#" class="facebook"><i class="bi bi-facebook"></i></a> -->
-        <a href="https://www.instagram.com/yoonsiklim/" class="instagram"><i class="bi bi-instagram"></i></a>
-        <!-- <a href="#" class="linkedin"><i class="bi bi-linkedin"></i></a> -->
-        <a href="https://github.com/AmSoMad" class="github"><i class="bi bi-github"></i></a>
-        <a href="https://amsomad.github.io/" class="blogger"><i class='bx bxl-blogger'></i></a>
-        
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="마루 배드민턴 월별 확정 레슨 일정을 확인하고 이미지로 저장하세요."
+    />
+    <meta name="theme-color" content="#6d39e7" />
+    <title>콕콕 레슨 캘린더</title>
+    <link rel="stylesheet" href="./styles.css?v=20260913-cloud1" />
+  </head>
+  <body data-mode="public" data-public-ready="false">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="콕콕 레슨 캘린더 처음으로">
+        <span class="brand-mark" aria-hidden="true">
+          <img src="./assets/maru-logo.png" data-maru-logo alt="" />
+        </span>
+        <span>
+          <strong>콕콕</strong>
+          <small>레슨 캘린더</small>
+        </span>
+      </a>
+      <div class="top-actions">
+        <span class="saved-state" id="savedState" aria-live="polite">이 기기에 자동 저장돼요</span>
+        <button class="button button-ghost desktop-only" id="resetButton" type="button">
+          처음부터
+        </button>
+        <button class="button button-primary" id="downloadButton" type="button" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14" />
+          </svg>
+          PNG 저장
+        </button>
       </div>
+    </header>
 
-    </div>
-  </header><!-- End Header -->
-
-  <!-- ======= About Section ======= -->
-  <section id="about" class="about">
-
-    <!-- ======= About Me ======= -->
-    <div class="about-me container">
-
-      <div class="section-title">
-        <h2>About</h2>
-        <p>Learn more about me</p>
-      </div>
-
-      <div class="row">
-        <div class="col-lg-4" data-aos="fade-right">
-          <img src="assets/img/me01.jpg" class="img-fluid" alt="">
-          <!-- <img src="assets/img/me02.jpg" class="img-thumbnail" alt=""> -->
+    <section class="cloud-panel" aria-labelledby="cloudTitle">
+      <div class="cloud-heading">
+        <div>
+          <h1 id="cloudTitle">확정 레슨 일정</h1>
+          <p id="cloudStatus" role="status" aria-live="polite">공개 일정을 불러오는 중…</p>
         </div>
-        <div class="col-lg-8 pt-4 pt-lg-0 content" data-aos="fade-left">
-          <h3>Web &amp; AI Solutions Developer / Technical Sales</h3>
-          <p class="fst-italic">
-            하나하나 배워가면서 나의 부족함을 채우는게 내 자신에게 보람차다
-          </p>
-          <div class="row">
-            <div class="col-lg-6">
-              <ul>
-                <li><i class="bi bi-chevron-right"></i> <strong>Name :</strong> <span>Yoon Sik Lim</span></li>
-                <li><i class="bi bi-chevron-right"></i> <strong>Birthday :</strong> <span>8 Nov. 1991</span></li>
-                <li><i class="bi bi-chevron-right"></i> <strong>Blog :</strong> <span><a href="http://amsomad.github.io">amsomad.github.io</a></span></li>
-                <!-- <li><i class="bi bi-chevron-right"></i> <strong>Phone :</strong> <span></span></li> -->
-                <li><i class="bi bi-chevron-right"></i> <strong>City :</strong> <span>Yongin-si, Gyeonggi-do</span></li>
-              </ul>
+        <button class="button button-ghost" id="modeButton" type="button">관리자 편집</button>
+      </div>
+      <div class="cloud-controls">
+        <label class="field"><span>조회할 연월</span><input id="cloudMonth" type="month" min="1000-01" max="9999-12" /></label>
+        <label class="field"><span>확정된 일정</span><select id="publishedMonths"><option value="">확정된 월 선택</option></select></label>
+        <button class="button button-ghost" id="refreshCloudButton" type="button">새로고침</button>
+      </div>
+      <div class="public-link-row">
+        <label class="field"><span>공개 일정 공유 주소</span><input id="shareLink" type="url" readonly /></label>
+        <button class="button button-ghost" id="copyPublicLinkButton" type="button">링크 복사</button>
+      </div>
+      <div id="authArea" hidden>
+        <details id="authDetails">
+          <summary>관리자 로그인</summary>
+          <form id="loginForm" class="login-form">
+            <label class="field"><span>관리자 이메일</span><input id="loginEmail" type="email" autocomplete="username" required /></label>
+            <label class="field"><span>비밀번호</span><input id="loginPassword" type="password" autocomplete="current-password" required /></label>
+            <button class="button button-primary" id="loginButton" type="submit">로그인</button>
+            <p>등록된 관리자만 서버 일정을 저장·확정할 수 있습니다.</p>
+          </form>
+          <div id="signedInArea" class="signed-in-area" hidden>
+            <span id="signedInEmail"></span>
+            <button class="button button-ghost" id="logoutButton" type="button">로그아웃</button>
+          </div>
+        </details>
+      </div>
+      <div id="adminCloudActions" class="admin-cloud-actions" hidden>
+        <button class="button button-primary" id="saveDraftButton" type="button">작업 저장</button>
+        <button class="button button-ghost" id="loadDraftButton" type="button">서버 일정 불러오기</button>
+        <button class="button button-ghost" id="localBackupButton" type="button">작업본 백업</button>
+        <button class="button button-ghost" id="restoreLocalButton" type="button">이전 기기 작업본 복원</button>
+      </div>
+      <noscript>일정을 조회하려면 브라우저에서 JavaScript를 활성화해주세요.</noscript>
+    </section>
+    <p id="publicEmpty" class="public-empty" role="status">확정 일정을 불러오고 있어요.</p>
+
+    <nav class="mobile-tabs" aria-label="화면 전환">
+      <button class="mobile-tab is-active" type="button" data-mobile-view="edit" aria-pressed="true">
+        일정 설정
+      </button>
+      <button class="mobile-tab" type="button" data-mobile-view="preview" aria-pressed="false">
+        미리보기
+      </button>
+    </nav>
+
+    <main class="workspace" id="top" data-mobile-view="edit">
+      <section class="editor" aria-labelledby="editor-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">SCHEDULE EDITOR</p>
+            <h1 id="editor-title">이번 달 레슨을 정해볼까요?</h1>
+          </div>
+          <span class="step-pill">한 번 더 누르면 휴강(X)이 돼요</span>
+        </div>
+
+        <section class="panel basics-panel" aria-labelledby="basics-title">
+          <div class="panel-title-row">
+            <span class="panel-number">01</span>
+            <div>
+              <h2 id="basics-title">기본 정보</h2>
+              <p>이미지 상단에 표시될 내용이에요.</p>
             </div>
-            <div class="col-lg-6">
-              <ul>
-                <li><i class="bi bi-chevron-right"></i> <strong>Age :</strong> <span>32</span></li>
-                <li><i class="bi bi-chevron-right"></i> <strong>Gender :</strong> <span>Male</span></li>
-                <li><i class="bi bi-chevron-right"></i> <strong>Email :</strong> <span>lsun000@naver.com</span></li>
-                <!-- <li><i class="bi bi-chevron-right"></i> <strong>Main task :</strong> <span>Web &amp; GIS</span></li> -->
-                <li><i class="bi bi-chevron-right"></i> <strong>Hobby :</strong> <span>Badminton & Game (<a href="https://youtu.be/ymEkX1ScOLQ?list=PLp9StQZ64GNkEggalrHOuMYm7-JfbE_Br&t=429" target="_blank">KartRider</a>) </span></li>
-              </ul>
-            </div>
           </div>
-          <p>
-            슬기롭지 않은 자는 충고와 조언을 듣지 않고 따르지 않으며 <br>
-            매너리즘에 빠진 자들이라 생각합니다. <br>
-            저는 타인의 조언을 귀담아듣고 부족한 부분을 보완하며 발전하려고 노력합니다.
-          </p>
-          <p>
-            저의 단점은 말이 많다는 점이지만 <br>
-            동료와 활발히 소통하고 타인에게 나에 의도와 생각을 <br>
-            분명히 전달하는데 자신감이 있습니다.
-          </p>
-          <p>
-            저의 장점은 절대로 포기하지 않는다는 점입니다. <br>
-            어릴 적 즐겨 하던 게임 속 <a href="javascript:void(0);">"다시 시작"</a> 이라는 버튼이 있었습니다. <br>
-            이 버튼을 누르면 다시 처음으로 돌아가 게임을 시작하게 됩니다. <br>
-            저는 처음부터 다시 하는 것에 대한 두려움이 없었습니다. <br>
-            내가 무심코 하던 실수를 찾고 또 다른 방법을 찾고 보니 <br>
-            어느덧 목표에 도달하게 되었습니다. <br>
-          </p>  
-          <p>   
-            성인이 된 후로 프리랜서로 프로젝트를 참가하였을 때에도 난관에 부딪쳐 답이 없을 때 <br>
-            시행착오를 겪었지만 어김없이 다시 시작했고 결국 답을 찾았습니다.<br>
-            이런 경험이 있기에 당당하게 말할 수 있습니다.
-          </p>  
-          <p> 
-            네 저는 쉽게 포기 안 합니다
-            저는. 이런 사람입니다. <i class="bi bi-emoji-wink"></i>
-          </p>
-        </div>
-      </div>
-
-    </div><!-- End About Me -->
-
-  </section><!-- End About Section -->
-
-  <!-- ======= Resume Section ======= -->
-  <section id="resume" class="resume">
-    <div class="container">
-
-      <div class="section-title">
-        <h2>Resume</h2>
-        <p>Check My Resume</p>
-      </div>
-
-      <div class="row">
-        <!-- main -->
-
-        <!-- custom -->
-        <div class="col-lg-6">
-
-          <h3 class="resume-title">Sumary</h3>
-          <div class="resume-item pb-0">
-            <h4>임 윤 식(Lim Yoon Sik)😉</h4>
-            <p>
-              <em>
-                늦었다 생각안하고, 센스있게 행동하며 모른다고 포기안하고 <br> 
-                될때까지 해보는 끈기있는 <b><a href="javascript:void(0);">Junior</a></b> 입니다. <br>
-                스트레스를 크게 잘받지 않고 낙천적인 스타일입니다.
-              </em>
-            </p>
-            <p>
-            <ul>
-              <li>2010.12 - 2012.11 해군전산병(만기전역)</li>
-              <li>MBTI - <a href="https://namu.wiki/w/ENFP" target="_black">ENFP-A</a> </li>
-              <li>혈액형 - A</li>
-            </ul>
-            <h5>2008.03</h5>
-            <p><em>워드프로세서 1급</em></p>            
-            <h5>2007.11</h5>
-            <p><em>정보처리기능사</em></p>
-            </p>
-          </div>
-
-          <h3 class="resume-title">Education</h3>
-          <div class="resume-item">
-            <h4>University</h4>
-            <h5>2010.03 - 2010.12</h5>
-            <p><em>남서울대학교 정보통신공학과(중퇴)</em></p>
-            <p></p>
-            <h4>High School</h4>
-            <h5>2007.03 - 2010.02</h5>
-            <p><em>용인백현고등학교 졸업 - 이공계</em></p>
-          </div>
-
-        </div>
-        <div class="col-lg-6">
-          <div class="resume-item">
-            <!-- 1 -->
-            <h4>Badminton Club</h4>
-            <h5>2023.09.04 ~ </h5>
-            <p><em>배드민턴 동호인 클럽 & 모임</em></p>
-            <p>
-              배드민턴 입문자부터 아마추어 대회참가를 위한 <br>
-              용인시 소속 클럽회장으로 활동중 <br>
-              * 소모임을 통한 인원 300명 및 협회등록인원 40명 이상
-            </p>            
-            <!-- 2 -->
-            <h4>Special Lecture</h4>
-            <h5>2022.01.25 - 2022.01.25</h5>
-            <p><em>(주)엠아이티능력개발원-특강</em></p>
-            <p>
-              교육생분들에게 나의 지금까지의 개발자로의 성장과정과 <br>
-              찾아온 위기와 그것을 해결하던 실무의 경험을 전달
-            </p>
-            <!-- 3 -->
-            <h4><a href="https://lxsiedu.or.kr/" target="_black">공간정보아카데미(국토정보교육원)</a></h4>
-            <h5>2021.06 - 2021.06</h5>
-            <p><em>오픈소스 GIS 서비스 개발자 심화</em></p>
-            <p>
-              GIS 개발에 필요한 지식과 프로젝트 구성 및 활용법에 관한 교육 이수<br>
-              ( openlayers, PostgreSQL-postGIS, node.js, SQL )
-            </p>
-            <!-- 4 -->
-            <h4><a href="https://www.boostcourse.org/" target="_black">boostcourse</a></h4>
-            <h5>2021.01.11 - 2021.02.26</h5>
-            <p><em>CS50 코칭스터디 2기[리드부스터]</em></p>
-            <p>
-              6인 1개조 구성된 팀에서 리더로 팀원을 이끌고 기본CS부분의 강의와<br>
-              C언어를 활용한 기초알고리즘에 관한 그룹형 스터디활동을 하였다.
-            </p>
-            <!-- 5 -->
-            <h4>Boot Camp</h4>
-            <h5>2019.10 - 2020.05</h5>
-            <p><em>(주)엠아이티능력개발원</em></p>
-            <p>사물인터넷(IoT)융합 응용S/W 개발자 양성과정</p>
-
-          </div>
-        </div>
-        <div class="col-lg-6">
-
-          <h3 class="resume-title">Professional Experience</h3
-          <!-- NEW: Puzzle AI -->
-          <div class="resume-item">
-            <h4>퍼즐에이아이 (Puzzle AI)</h4>
-            <h5>2024.06 ~ ing</h5>
-            <p><em>Technical Sales Engineer / Developer</em></p>
-            <p>
-            <ul>
-              <li>의료 문서 자동화를 위한 K-Voice 기반 LLM 솔루션(GenNote, VoiceEMR 2.0 → <b>Puzzle Gen</b>) 기획·데모·PoC 수행</li>
-              <li>병원 EMR/PACS 연동 PoC 및 커스터마이징(내과/영상의학과 워크플로우, SOAP 서식, 템플릿 제작)</li>
-              <li>고객 미팅·전시(HIMSS 2025 등) 대응, 제안서/브로셔·웹 콘텐츠 업데이트</li>
-              <li>사내 CRM 웹서비스 재구축(ASP.NET Core 8, EF Core, MySQL) — 대화/거래/콜 이력 관리</li>
-              <li>현장용 Windows/크롬 확장 개발(마이크 권한·장치 전환, STT, DOM 자동입력, Voice Command)</li>
-            </ul>
-            </p>
-          
-            <h5><em>사용기술</em></h5>
-            <p>
-            <ul>
-              <li>.NET 8, ASP.NET Core, EF Core, WinUI 3, C#</li>
-              <li>JavaScript, Chrome Extensions, WebAudio/MediaDevices</li>
-              <li>PostgreSQL / MySQL, WordPress</li>
-              <li>LLM/AI: Prompt·JSON 템플릿, 요약·정규표현식 자동생성, onnxruntime / llama.cpp(로컬 sLLM) 실험</li>
-            </ul>
-            </p>
-          </div>
-
-          <div class="resume-item">
-            <h4>(주)엘케이랩</h4>
-            <h5>2022.03 ~ 2024.05</h5>
-            <p><em>생산관리 MES Solution 유지보수</em></p>
-            <p>
-            <ul>
-              <li>제조기업의 생산관리를 위한 솔루션을 배급 및 유지보수</li>
-              <li>사용기술 : C#, .NET 5, WinForms, OnnxRuntime, Vision AI, ASP.NET Core</li>
-              <li>주 업무 : 서비스중 필요한 기능 추가 및 장비 인터페이스</li>
-            </ul>
-            </p>
-            <h5><em>Project</em></h5>
-            <p><em>홈페이지 제작</em></p>
-            <p>
-            <ul>
-              <li>착수시기 : 2024-03-12 ~ </li>
-              <li>사용기술 : .NET8, ASP.NET Core, EF Core, PostgreSQL</li>
-              <li>주 업무 : 홈페이지 제작 및 유지보수</li>
-              <li><a href="https://home.lk-lab.co.kr/" target="_black">https://home.lk-lab.co.kr/</a></li>
-            </ul>
-            </p>            
-            <p><em>에스디(주) 스마트공장 구축 및 고도화 -기초 유지보수</em></p>
-            <p>
-            <ul>
-              <li>사업연도 : 2022</li>
-              <li>사용기술 : C#, .NET, WinForms</li>
-              <li>주 업무 : Solution 도입 & 기업 특수성 기능구현 & 장비 인터페이스</li>
-            </ul>
-            </p>
-            <p><em>(주)프로메테우스 제조데이터분석 & 신규 구축 및 고도화</em></p>
-            <p>
-            <ul>
-              <li>사업연도 : 2022</li>
-              <li>사용기술 : C#, .NET, WinForms</li>
-              <li>주 업무 : Solution 도입 & 기업 특수성 기능구현 & 장비 인터페이스</li>
-            </ul>
-            </p>
-            <p><em>KI4C DX 플랫폼 개발</em></p>
-            <p>
-            <ul>
-              <li>사업연도 : 2023</li>
-              <li>사용기술 : ASP.NET Core .NET6 , Web</li>
-              <li>주 업무 : Android 모바일 기능 - Web 전환</li>
-            </ul>
-            </p>
-            <p><em>산업안전365 신규 플랫폼 인프라개발</em></p>
-            <p>
-            <ul>
-              <li>사업연도 : 2023 ~ 2024</li>
-              <li>사용기술 : WinUI3, OnnxRuntime</li>
-              <li>주 업무 : 카메라(열화상포함)를 통한 객체 인식 및 인프라개발</li>
-            </ul>
-            </p>
-            <p><em>(유)BRM 스마트공장 구축 및 고도화 -기초 & 고도화(중간1)</em></p>
-            <p>
-            <ul>
-              <li>사업연도 : 2023, 2024</li>
-              <li>사용기술 : C#, .NET, WinForms</li>
-              <li>주 업무 : Solution 도입 & 기업 특수성 기능구현 & 장비 인터페이스</li>
-            </ul>
-            </p>
-            <p><em>(주)유씨티 인공지능 스마트공장 고도화1</em></p>
-            <p>
-            <ul>
-              <li>사업연도 : 2021 ~ 2022</li>
-              <li>사용기술 : C#, .NET, WinForms, Python Yolo</li>
-              <li>Python, yolo, Web</li>
-              <li>주 업무 : ObjectDetection 기능 구현 - 릴 테이프 센서칩</li>
-            </ul>
-            </p>
-            <p><em>위더스컴퓨터스마트공장 구축 및 고도화 -기초 & 고도화(중간1)</em></p>
-            <p>
-            <ul>
-              <li>사업연도 : 2022 ~ 2023</li>
-              <li>사용기술 : C#, .NET, WinForms, Onnx, WebView2</li>
-              <li>Python, yolo, Web</li>
-              <li>주 업무 : ObjectDetection 기능 구현, 택배송장출력 업무개편 및 반자동화, 기 구축ERP 연동</li>
-            </ul>
-            </p>
-            <p><em>안동농협-더햇식품사업소 구축 및 고도화 -기초</em></p>
-            <p>
-            <ul>
-              <li>사업연도 : 2023 ~ 2024</li>
-              <li>사용기술 : C#, Flutter, gRPC 프로토콜</li>
-              <li>주 업무 :  MES Solution 도입 및 장비 인터페이스, 시설장비 원격제어, 공정 개선, 공정모듈 모바일화</li>
-            </ul>
-            </p>
-            <p><em>이엔지텍 - 스마트 공장 구축 및 제조데이터 분석</em></p>
-            <p>
-            <ul>
-              <li>사업연도 : 2023 ~ 2024</li>
-              <li>사용기술 : Python, </li>
-              <li>주 업무 :  MES Solution 도입 및 장비 인터페이스, 시설장비 원격제어, 공정 개선, 공정모듈 모바일화</li>
-            </ul>
-            </p>
-          </div>
-          <div class="resume-item">
-            <h4>성공하는공장(스타트업)</h4>
-            <h5>2021.01 - 2021.10</h5>
-            <p><em>GIS 기반 신규플랫폼 개발 & BM & 기획</em></p>
-            <p>
-            <ul>
-              <li>지도를 활용하여 산업,토지,부동산 정보를 취합하여 정보를 제공하는 플랫폼</li>
-              <li>사용기술 : Spring Boot, Thymeleaf, bootstrap5, PostgreSQL + PostGIS, Jquery, OpenLayers6, Mybatis</li>
-              <li>주 업무 : 기획과 프론트 & 백 개발참여 및 기술검토</li>
-              <li>address(지번, 도로명, Lot) to EPSG:좌표변환</li>
-              <li>한반도 모든지역의 모든 용도지역, 지구, 구역정보 구현</li>
-              <li>지적도와 건축물별 건축물대장정보(표제부) 구현</li>
-              <li>엑셀의 데이터를 워치정보로 변환하여 레이어 구현</li>
-              <li>업종별 데이터 검색기능 구현</li>
-              <li>주소 검색기능 구현(해당 위치 이동확대)</li>
-              <li>PDF파일 뷰어기능 구현</li>
-            </ul>
-            </p>
-          </div>
-          <div class="resume-item">
-            <h4>소리자바 - Freelancer</h4>
-            <h5>2020.07 - 2020.12</h5>
-            <p><em>데이터팩토리 & 자막센터</em></p>
-            <p>
-            <ul>
-              <li>동시 2개 플랫폼 개발 참여</li>
-              <li>사용기술 : Jquery, Thymeleaf, bootstrap4, Spring Boot, PostgreSQL, Mybatis, Jenkins, SVN</li>
-              <li>주 업무 : 퍼블리싱작업과 입히는 작업을 도움을 주며 프론트작업</li>
-              <li>(admin페이지 & 각 게시판 작업)</li>
-              <li>종료전 모든 문서작업완료 후 프로젝트 종료</li>
-              <li><a href="https://www.ddfnet.kr/" target="_black">https://www.ddfnet.kr/</a></li>
-            </ul>
-            </p>
-          </div>
-
-          <div class="resume-item">
-            <h4>바심정보 - Internship</h4>
-            <h5>2010.06 - 2010.09</h5>
-            <p><em>HTML5 기술검토 & QA</em></p>
-            <p>
-            <ul>
-              <li>주 업무 : 하나대투증권 App 개발 QA & 기술검토</li>
-            </ul>
-            </p>
-          </div>
-
-        </div>
-
-        <div class="col-lg-6">
-
-          <h3 class="resume-title">Work Experience</h3>
-          <div class="resume-item">
-            <h4>SPYDER</h4>
-            <h5>2018.11 - 2019.07</h5>
-            <p><em>롯데프리미엄아울렛 기흥점</em></p>
-            <p>
-              <li>유통 판매 및 서비스업</li>
-            </p>
-          </div>
-
-          <div class="resume-item">
-            <h4>㈜ 나라입찰</h4>
-            <h5>2018.04 - 2018.09</h5>
-            <p><em>나라장터 경쟁입찰 보조서비스</em></p>
-            <p>
-            <ul>
-              <li>고객유치 및 도급서비스 제공</li>
-            </ul>
-            </p>
-          </div>
-
-          <div class="resume-item">
-            <h4>(주)발렉스특수물류</h4>
-            <h5>2013.05 - 2017.12</h5>
-            <p><em>금고팀장(자금처리 및 마감)</em></p>
-            <p>
-            <ul>
-              <li>사내 KPI 가이드라인 기획</li>
-              <li>현송 업무(cd/atm 및 자금분출처리 건 등)와 고객사 현장방문 응대</li>
-              <li>금융사와 업무협의를 통한 자금 반출입</li>
-              <li>지사 업무총괄 및 자금흐름 통제</li>
-              <li>(현장 3인1개조 17팀 & 내무직원 11명 일괄 업무지시)</li>
-            </ul>
-            </p>
-          </div>
-
-        </div>
-
-
-      </div>
-
-    </div>
-  </section><!-- End Resume Section -->
-
-  <!-- ======= Portfolio Section ======= -->
-  <section id="portfolio" class="portfolio">
-    <div class="container">
-
-      <div class="section-title">
-        <h2>Portfolio</h2>
-        <p>My Works</p>
-      </div>
-
-      <div class="row">
-        <div class="col-lg-12 d-flex justify-content-center">
-          <ul id="portfolio-flters">
-            <li data-filter="*" class="filter-active">All</li>
-            <!-- <li data-filter=".filter-app">App</li> -->
-            <!-- <li data-filter=".filter-card">Card</li> -->
-            <li data-filter=".filter-utility">Utility</li>
-            <li data-filter=".filter-web">Web</li>
-            <li data-filter=".filter-win">Windows app</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="row portfolio-container">
-        <!-- Filter-utility -->
-        <div class="col-lg-4 col-md-6 portfolio-item filter-utility">
-          <div class="portfolio-wrap">
-            <img src="assets/img/portfolio/portfolio-01.jpg" class="img-fluid" alt="">
-            <div class="portfolio-info">
-              <h4>MakeUP 2 Img</h4>
-              <p>
-                사진 위치별로 정리하기<br>
-                이미지파일의 메타데이터(exif)를 지오코딩하여<br>
-                지도에 뿌려지며 범위선택으로 지역별로 저장이 가능하다.<br>
-              </p>
-              <div class="portfolio-links">
-                <a href="https://github.com/AmSoMad/amsomad_home/tree/main/makeupimg" target="_blank" title="github Repositories"><i class="bx bxl-github"></i></a>
-                <a href="./makeupimg/makeupimg.html" data-gallery="portfolioDetailsGallery" data-glightbox="type: external" class="portfolio-details-lightbox" title="Demo Pages"><i class="bx bx-link"></i></a>
-                <a href="https://amsomad.github.io/%EA%B0%9C%EB%B0%9C%EC%9D%B4%EC%95%BC%EA%B8%B0/post3/" target="_blank" title="blog post"><i class='bx bxl-blogger'></i></a>                
+          <div class="field-grid">
+            <label class="field">
+              <span>대상 연월</span>
+              <input id="targetMonth" type="month" min="1000-01" max="9999-12" />
+            </label>
+            <label class="field">
+              <span>코치 선택</span>
+              <div class="select-action-row">
+                <select id="coachName" aria-label="일정에 표시할 코치"></select>
+                <button class="field-action field-action-danger" id="removeCoachButton" type="button">삭제</button>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Filter-web -->
-        <div class="col-lg-4 col-md-6 portfolio-item filter-web">
-          <div class="portfolio-wrap">
-            <img src="assets/img/portfolio/portfolio-02.jpg" class="img-fluid" alt="">
-            <div class="portfolio-info">
-              <h4>지역 분석지도</h4>
-              <p>
-                산업 및 지역분석<br>
-                각각의 상황에 맞는 사용자의 필요 요소를 <br>
-                공간정보로 제공하여 확실한 요충지를 찾을수 있다.<br>
-              </p>
-              <div class="portfolio-links">
-                <a href="https://github.com/AmSoMad/amsomad_home/tree/main/gis" target="_blank" title="github Repositories"><i class="bx bxl-github"></i></a>
-                <a href="./gis/analysisMap.html" data-gallery="portfolioDetailsGallery" data-glightbox="type: external" class="portfolio-details-lightbox" title="Demo Pages"><i class="bx bx-link"></i></a>
+            </label>
+            <label class="field">
+              <span>새 코치 추가</span>
+              <div class="select-action-row">
+                <input id="newCoachName" type="text" maxlength="18" placeholder="예: 마루 코치님" />
+                <button class="field-action" id="addCoachButton" type="button">추가</button>
               </div>
+            </label>
+            <label class="field field-wide">
+              <span>한 줄 인사</span>
+              <input
+                id="greeting"
+                type="text"
+                maxlength="46"
+                placeholder="예: 매일 조금씩 성장하는 우리, 코트에서 만나요!"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section class="confirm-panel" aria-labelledby="confirm-title">
+          <div>
+            <span class="confirm-dot" aria-hidden="true"></span>
+            <div>
+              <strong id="confirm-title">일정 수정 중</strong>
+              <p id="confirmDescription">날짜를 확인한 뒤 확정해 주세요. 이 기기에 자동 저장됩니다.</p>
             </div>
           </div>
-        </div>
+          <button class="button button-confirm" id="confirmScheduleButton" type="button">이 일정 확정</button>
+        </section>
 
-        <!-- Filter-web -->
-        <div class="col-lg-4 col-md-6 portfolio-item filter-web">
-          <div class="portfolio-wrap">
-            <img src="assets/img/portfolio/portfolio-03.jpg" class="img-fluid" alt="">
-            <div class="portfolio-info">
-              <h4>스타트업 SJ-proj</h4>
-              <p>
-                부동산 + 토지 + 법률 + 산업까지 4가지를 <br>
-                조합한 프롭테크기반 지도플랫폼 개발참여 <br>
-              </p>
-              <div class="portfolio-links">
+        <section class="schedule-editor-section" aria-labelledby="schedule-title">
+          <div class="panel-title-row schedule-section-title">
+            <span class="panel-number">02</span>
+            <div>
+              <h2 id="schedule-title">레슨 일정</h2>
+              <p>날짜를 반복해서 눌러 레슨일과 휴강일을 정하세요.</p>
+            </div>
+            <button class="button button-add-schedule" id="toggleScheduleCreatorButton" type="button">+ 일정 추가</button>
+          </div>
+          <form class="schedule-creator" id="scheduleCreator" hidden>
+            <div class="creator-heading">
+              <strong>새 레슨 일정</strong>
+              <span>요일과 시간을 선택하면 새 캘린더가 추가됩니다.</span>
+            </div>
+            <label class="field field-wide">
+              <span>일정 이름</span>
+              <input id="newScheduleTitle" type="text" maxlength="26" placeholder="예: 월 · 목 새벽 레슨" />
+            </label>
+            <fieldset class="weekday-picker">
+              <legend>레슨 요일</legend>
+              <div>
+                <label><input type="checkbox" name="newScheduleDay" value="0" /><span>일</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="1" /><span>월</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="2" /><span>화</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="3" /><span>수</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="4" /><span>목</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="5" /><span>금</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="6" /><span>토</span></label>
               </div>
+            </fieldset>
+            <div class="creator-time-row">
+              <label class="field"><span>시작</span><input id="newScheduleStart" type="time" value="19:00" /></label>
+              <label class="field"><span>종료</span><input id="newScheduleEnd" type="time" value="22:00" /></label>
             </div>
+            <div class="creator-actions">
+              <button class="button button-ghost" id="cancelScheduleCreatorButton" type="button">취소</button>
+              <button class="button button-primary" type="submit">일정 추가</button>
+            </div>
+          </form>
+          <div class="holiday-summary" id="holidaySummary" aria-live="polite"></div>
+          <div id="scheduleEditors" class="schedule-editors"></div>
+        </section>
+
+        <section class="panel notice-panel" aria-labelledby="notice-title">
+          <div class="panel-title-row">
+            <span class="panel-number">03</span>
+            <div>
+              <h2 id="notice-title">안내 문구</h2>
+              <p>이미지 하단에 들어갈 내용을 적어주세요.</p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <label class="field field-wide">
+              <span>첫 번째 안내</span>
+              <input id="noticeOne" type="text" maxlength="54" />
+            </label>
+            <label class="field field-wide">
+              <span>두 번째 안내</span>
+              <input id="noticeTwo" type="text" maxlength="54" />
+            </label>
+            <label class="field field-wide">
+              <span>맨 아래 문구</span>
+              <input id="footerMessage" type="text" maxlength="42" />
+            </label>
+          </div>
+        </section>
+
+        <button class="button button-ghost mobile-reset" id="mobileResetButton" type="button">
+          모든 내용을 처음으로 되돌리기
+        </button>
+      </section>
+
+      <aside class="preview-pane" aria-labelledby="preview-title">
+        <div class="preview-toolbar">
+          <div>
+            <p class="eyebrow">LIVE PREVIEW</p>
+            <h2 id="preview-title">공유 이미지 미리보기</h2>
+          </div>
+          <div class="preview-actions">
+            <button class="icon-button" id="shareButton" type="button" aria-label="이미지 공유">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="18" cy="5" r="2.5" />
+                <circle cx="6" cy="12" r="2.5" />
+                <circle cx="18" cy="19" r="2.5" />
+                <path d="M8.2 10.8l7.6-4.5M8.2 13.2l7.6 4.5" />
+              </svg>
+            </button>
+            <button class="button button-dark" id="downloadPreviewButton" type="button">
+              PNG 저장
+            </button>
           </div>
         </div>
 
-        <!-- Filter-web -->
-        <div class="col-lg-4 col-md-6 portfolio-item filter-web">
-          <div class="portfolio-wrap">
-            <img src="assets/img/portfolio/portfolio-04.jpg" class="img-fluid" alt="">
-            <div class="portfolio-info">
-              <h4>CSS-Home-Solution [IoT]</h4>
-              <p>
-                일산화탄소 & 층간소음 & 외부출입 & 유해연기 의 센서값을 <br>
-                HTTP에 담아 DB에 저장하고를 실시간 감지현황을 Web상으로 확인 <br>
-                교육생으로 만든 마지막 작품 <br>
-                집 내부와 외부의 문제를 예방하기 위한 솔루션이다. <br>
-              </p>
-              <div class="portfolio-links">
-                <a href="https://github.com/AmSoMad/CSS-Home-Solution" target="_blank" title="github Repositories"><i class="bx bxl-github"></i></a>
-                <a href="assets/img/portfolio/csshs.mp4" data-gallery="portfolioDetailsGallery" data-glightbox="type: video" class="portfolio-details-lightbox" title="Demo Pages"><i class="bx bx-video"></i></a>
-              </div>
-            </div>
+        <div class="preview-stage" id="previewStage">
+          <div class="poster-frame" id="posterFrame">
+            <article class="poster" id="poster" aria-label="레슨 일정 이미지 미리보기">
+              <div class="poster-noise"></div>
+              <div class="poster-orb poster-orb-one"></div>
+              <div class="poster-orb poster-orb-two"></div>
+
+              <header class="poster-header">
+                <div class="poster-logo">
+                  <img src="./assets/maru-logo.png" data-maru-logo alt="MARU 배드민턴 로고" />
+                </div>
+                <div class="coach-label">
+                  <span class="coach-label-dot"></span>
+                  <span id="posterCoach">쌍둥이 코치님</span>
+                  <span class="coach-label-dot"></span>
+                </div>
+                <div class="poster-title-row">
+                  <div class="month-badge">
+                    <span id="posterMonthNumber">9</span>
+                    <small>월</small>
+                  </div>
+                  <div class="poster-title-copy">
+                    <p id="posterYear">2026 BADMINTON LESSON</p>
+                    <h2>레슨 일정 안내</h2>
+                  </div>
+                </div>
+                <div class="greeting-ribbon">
+                  <span class="ribbon-line"></span>
+                  <p id="posterGreeting">매일 조금씩 성장하는 우리, 코트에서 만나요!</p>
+                  <span class="ribbon-line"></span>
+                </div>
+                <div class="poster-status-badge" id="posterStatusBadge">수정 중 일정</div>
+              </header>
+
+              <section class="poster-schedules" id="posterSchedules"></section>
+
+              <footer class="poster-footer">
+                <div class="footer-kicker">
+                  <span class="footer-symbol" aria-hidden="true">
+                    <svg viewBox="0 0 44 44">
+                      <circle class="symbol-ring" cx="22" cy="22" r="17" />
+                      <path d="M22 12v13" />
+                      <circle class="symbol-dot" cx="22" cy="31" r="1.7" />
+                    </svg>
+                  </span>
+                  <div>
+                    <small>PLEASE CHECK</small>
+                    <strong>꼭 확인해주세요!</strong>
+                  </div>
+                </div>
+                <div class="notice-list">
+                  <p><span>✓</span><b id="posterNoticeOne"></b></p>
+                  <p><span>✓</span><b id="posterNoticeTwo"></b></p>
+                </div>
+                <div class="footer-band">
+                  <span>COCK · GROW · SMILE</span>
+                  <strong id="posterFooterMessage"></strong>
+                  <span>LESSON CALENDAR</span>
+                </div>
+              </footer>
+            </article>
           </div>
         </div>
+        <p class="preview-hint">
+          미리보기 날짜를 눌러도 일정이 바뀝니다. 저장 이미지는 휴대폰에서 읽기 편한 세로형입니다.
+        </p>
+      </aside>
+    </main>
 
-        <!-- Filter-web -->
-        <div class="col-lg-4 col-md-6 portfolio-item filter-web">
-          <div class="portfolio-wrap">
-            <img src="assets/img/portfolio/portfolio-07.jpg" class="img-fluid" alt="">
-            <div class="portfolio-info">
-              <h4>ENTER-recruit</h4>
-              <p>
-                게임 클럽(모임) 모집을위한 가입신청서 작성과 <br>
-                친선경기를 위한 스케줄 관리까지 기능을 구현 <br>
-              </p>
-              <div class="portfolio-links">
-                <a href="https://github.com/AmSoMad/ENTER_recruit" target="_blank" title="github Repositories"><i class="bx bxl-github"></i></a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Filter-web -->
-        <div class="col-lg-4 col-md-6 portfolio-item filter-win">
-          <div class="portfolio-wrap">
-            <img src="https://github.com/AmSoMad/winformOnnxRuntime_ObjectDetection/blob/main/OnnxObjectdetect.png?raw=true" class="img-fluid" alt="">
-            <div class="portfolio-info">
-              <h4>Windows Screen Yolo</h4>
-              <p>
-                바탕화면 캡처를 통하여 객체추론 실행하며 윈도우환경<br>
-                어디서든 실행이 가능한 것이 특징이다. <br>
-                오래된 CCTV나 & 고화질사진을 확대하여 <br>
-                객체를 추론할때 사용한다. <br>
-              </p>
-              <div class="portfolio-links">
-                <!-- <a href="assets/img/portfolio/portfolio-02.jpg" data-gallery="portfolioGallery" class="portfolio-lightbox" title="Web 2"><i class="bx bx-plus"></i></a> -->
-                <a href="https://github.com/AmSoMad/winformOnnxRuntime_ObjectDetection" target="_blank" title="github Repositories"><i class="bx bxl-github"></i></a>
-                <a href="https://amsomad.github.io/c%23/Onnx_ObjectDetection_winforms/" target="_blank" title="blog post"><i class='bx bxl-blogger'></i></a>      
-                <!--download-->
-                <a href="https://github.com/AmSoMad/winformOnnxRuntime_ObjectDetection/releases/download/v1.0/winform_screenYolo.zip" target="_blank" title="download"><i class="bx bx-download"></i></a>
-                
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-    </div>
-  </section><!-- End Portfolio Section -->
-
-  <div class="credits">
-    
-    <a href="https://amsomad.github.io">AmsoMad</a> ver 0.1.12
-  </div>
-
-  <!-- Vendor JS Files -->
-  <script src="assets/vendor/purecounter/purecounter.js"></script>
-  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
-  <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
-  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
-  <script src="assets/vendor/waypoints/noframework.waypoints.js"></script>
-  <script src="assets/vendor/php-email-form/validate.js"></script>
-
-  <!-- Template Main JS File -->
-  <script src="assets/js/main.js"></script>
-
-  <!-- Template Custom JS File -->
-  <script src="assets/js/custom.js"></script>
-</body>
-
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./assets/maru-logo-data.js?v=20260913-cloud1"></script>
+    <script src="./vendor/korean-holidays.js?v=20260913-cloud1"></script>
+    <script src="./vendor/dom-export.js?v=20260913-cloud1"></script>
+    <script src="./supabase-config.js?v=20260913-cloud1"></script>
+    <script src="./calendar-storage.js?v=20260913-cloud1"></script>
+    <script src="./cloud-client.js?v=20260913-cloud1"></script>
+    <script src="./app.js?v=20260913-cloud1"></script>
+    <script src="./cloud-ui.js?v=20260913-cloud1"></script>
+  </body>
 </html>
