@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="배드민턴 레슨 일정을 선택하고 공유용 이미지로 저장하는 로컬 캘린더"
+      content="마루 배드민턴 월별 확정 레슨 일정을 확인하고 이미지로 저장하세요."
     />
     <meta name="theme-color" content="#6d39e7" />
     <title>콕콕 레슨 캘린더</title>
-    <link rel="stylesheet" href="./styles.css?v=20260909-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260913-cloud1" />
   </head>
-  <body>
+  <body data-mode="public" data-public-ready="false">
     <header class="topbar">
       <a class="brand" href="#top" aria-label="콕콕 레슨 캘린더 처음으로">
         <span class="brand-mark" aria-hidden="true">
@@ -27,7 +27,7 @@
         <button class="button button-ghost desktop-only" id="resetButton" type="button">
           처음부터
         </button>
-        <button class="button button-primary" id="downloadButton" type="button">
+        <button class="button button-primary" id="downloadButton" type="button" disabled>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14" />
           </svg>
@@ -35,6 +35,48 @@
         </button>
       </div>
     </header>
+
+    <section class="cloud-panel" aria-labelledby="cloudTitle">
+      <div class="cloud-heading">
+        <div>
+          <h1 id="cloudTitle">확정 레슨 일정</h1>
+          <p id="cloudStatus" role="status" aria-live="polite">공개 일정을 불러오는 중…</p>
+        </div>
+        <button class="button button-ghost" id="modeButton" type="button">관리자 편집</button>
+      </div>
+      <div class="cloud-controls">
+        <label class="field"><span>조회할 연월</span><input id="cloudMonth" type="month" min="1000-01" max="9999-12" /></label>
+        <label class="field"><span>확정된 일정</span><select id="publishedMonths"><option value="">확정된 월 선택</option></select></label>
+        <button class="button button-ghost" id="refreshCloudButton" type="button">새로고침</button>
+      </div>
+      <div class="public-link-row">
+        <label class="field"><span>공개 일정 공유 주소</span><input id="shareLink" type="url" readonly /></label>
+        <button class="button button-ghost" id="copyPublicLinkButton" type="button">링크 복사</button>
+      </div>
+      <div id="authArea" hidden>
+        <details id="authDetails">
+          <summary>관리자 로그인</summary>
+          <form id="loginForm" class="login-form">
+            <label class="field"><span>관리자 이메일</span><input id="loginEmail" type="email" autocomplete="username" required /></label>
+            <label class="field"><span>비밀번호</span><input id="loginPassword" type="password" autocomplete="current-password" required /></label>
+            <button class="button button-primary" id="loginButton" type="submit">로그인</button>
+            <p>등록된 관리자만 서버 일정을 저장·확정할 수 있습니다.</p>
+          </form>
+          <div id="signedInArea" class="signed-in-area" hidden>
+            <span id="signedInEmail"></span>
+            <button class="button button-ghost" id="logoutButton" type="button">로그아웃</button>
+          </div>
+        </details>
+      </div>
+      <div id="adminCloudActions" class="admin-cloud-actions" hidden>
+        <button class="button button-primary" id="saveDraftButton" type="button">작업 저장</button>
+        <button class="button button-ghost" id="loadDraftButton" type="button">서버 일정 불러오기</button>
+        <button class="button button-ghost" id="localBackupButton" type="button">작업본 백업</button>
+        <button class="button button-ghost" id="restoreLocalButton" type="button">이전 기기 작업본 복원</button>
+      </div>
+      <noscript>일정을 조회하려면 브라우저에서 JavaScript를 활성화해주세요.</noscript>
+    </section>
+    <p id="publicEmpty" class="public-empty" role="status">확정 일정을 불러오고 있어요.</p>
 
     <nav class="mobile-tabs" aria-label="화면 전환">
       <button class="mobile-tab is-active" type="button" data-mobile-view="edit" aria-pressed="true">
@@ -66,11 +108,21 @@
           <div class="field-grid">
             <label class="field">
               <span>대상 연월</span>
-              <input id="targetMonth" type="month" />
+              <input id="targetMonth" type="month" min="1000-01" max="9999-12" />
             </label>
             <label class="field">
-              <span>코치님 이름</span>
-              <input id="coachName" type="text" maxlength="18" placeholder="예: 쌍둥이 코치님" />
+              <span>코치 선택</span>
+              <div class="select-action-row">
+                <select id="coachName" aria-label="일정에 표시할 코치"></select>
+                <button class="field-action field-action-danger" id="removeCoachButton" type="button">삭제</button>
+              </div>
+            </label>
+            <label class="field">
+              <span>새 코치 추가</span>
+              <div class="select-action-row">
+                <input id="newCoachName" type="text" maxlength="18" placeholder="예: 마루 코치님" />
+                <button class="field-action" id="addCoachButton" type="button">추가</button>
+              </div>
             </label>
             <label class="field field-wide">
               <span>한 줄 인사</span>
@@ -84,6 +136,17 @@
           </div>
         </section>
 
+        <section class="confirm-panel" aria-labelledby="confirm-title">
+          <div>
+            <span class="confirm-dot" aria-hidden="true"></span>
+            <div>
+              <strong id="confirm-title">일정 수정 중</strong>
+              <p id="confirmDescription">날짜를 확인한 뒤 확정해 주세요. 이 기기에 자동 저장됩니다.</p>
+            </div>
+          </div>
+          <button class="button button-confirm" id="confirmScheduleButton" type="button">이 일정 확정</button>
+        </section>
+
         <section class="schedule-editor-section" aria-labelledby="schedule-title">
           <div class="panel-title-row schedule-section-title">
             <span class="panel-number">02</span>
@@ -91,7 +154,38 @@
               <h2 id="schedule-title">레슨 일정</h2>
               <p>날짜를 반복해서 눌러 레슨일과 휴강일을 정하세요.</p>
             </div>
+            <button class="button button-add-schedule" id="toggleScheduleCreatorButton" type="button">+ 일정 추가</button>
           </div>
+          <form class="schedule-creator" id="scheduleCreator" hidden>
+            <div class="creator-heading">
+              <strong>새 레슨 일정</strong>
+              <span>요일과 시간을 선택하면 새 캘린더가 추가됩니다.</span>
+            </div>
+            <label class="field field-wide">
+              <span>일정 이름</span>
+              <input id="newScheduleTitle" type="text" maxlength="26" placeholder="예: 월 · 목 새벽 레슨" />
+            </label>
+            <fieldset class="weekday-picker">
+              <legend>레슨 요일</legend>
+              <div>
+                <label><input type="checkbox" name="newScheduleDay" value="0" /><span>일</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="1" /><span>월</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="2" /><span>화</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="3" /><span>수</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="4" /><span>목</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="5" /><span>금</span></label>
+                <label><input type="checkbox" name="newScheduleDay" value="6" /><span>토</span></label>
+              </div>
+            </fieldset>
+            <div class="creator-time-row">
+              <label class="field"><span>시작</span><input id="newScheduleStart" type="time" value="19:00" /></label>
+              <label class="field"><span>종료</span><input id="newScheduleEnd" type="time" value="22:00" /></label>
+            </div>
+            <div class="creator-actions">
+              <button class="button button-ghost" id="cancelScheduleCreatorButton" type="button">취소</button>
+              <button class="button button-primary" type="submit">일정 추가</button>
+            </div>
+          </form>
           <div class="holiday-summary" id="holidaySummary" aria-live="polite"></div>
           <div id="scheduleEditors" class="schedule-editors"></div>
         </section>
@@ -177,6 +271,7 @@
                   <p id="posterGreeting">매일 조금씩 성장하는 우리, 코트에서 만나요!</p>
                   <span class="ribbon-line"></span>
                 </div>
+                <div class="poster-status-badge" id="posterStatusBadge">수정 중 일정</div>
               </header>
 
               <section class="poster-schedules" id="posterSchedules"></section>
@@ -209,15 +304,19 @@
           </div>
         </div>
         <p class="preview-hint">
-          미리보기 날짜를 눌러도 일정이 바뀝니다. 저장 이미지는 1080 × 1080px입니다.
+          미리보기 날짜를 눌러도 일정이 바뀝니다. 저장 이미지는 휴대폰에서 읽기 편한 세로형입니다.
         </p>
       </aside>
     </main>
 
     <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
-    <script src="./assets/maru-logo-data.js?v=20260909-2"></script>
-    <script src="./vendor/korean-holidays.js?v=20260909-2"></script>
-    <script src="./vendor/dom-export.js?v=20260909-2"></script>
-    <script src="./app.js?v=20260909-2"></script>
+    <script src="./assets/maru-logo-data.js?v=20260913-cloud1"></script>
+    <script src="./vendor/korean-holidays.js?v=20260913-cloud1"></script>
+    <script src="./vendor/dom-export.js?v=20260913-cloud1"></script>
+    <script src="./supabase-config.js?v=20260913-cloud1"></script>
+    <script src="./calendar-storage.js?v=20260913-cloud1"></script>
+    <script src="./cloud-client.js?v=20260913-cloud1"></script>
+    <script src="./app.js?v=20260913-cloud1"></script>
+    <script src="./cloud-ui.js?v=20260913-cloud1"></script>
   </body>
 </html>

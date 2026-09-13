@@ -3,8 +3,9 @@
 
   const STORAGE_KEY = "cockcock-lesson-calendar-v1";
   const RULES_VERSION = 2;
+  const POSTER_WIDTH = 1080;
   const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-  const SCHEDULES = [
+  const DEFAULT_SCHEDULES = [
     {
       key: "mwf-evening",
       short: "월수금",
@@ -49,6 +50,13 @@
       accentDark: "#08755f",
       accentSoft: "#eafaf6",
     },
+  ];
+  const CUSTOM_COLORS = [
+    { accent: "#8b5cf6", accentDark: "#6034bd", accentSoft: "#f3efff" },
+    { accent: "#e56c32", accentDark: "#a94318", accentSoft: "#fff2eb" },
+    { accent: "#1595a8", accentDark: "#086a78", accentSoft: "#eafafd" },
+    { accent: "#d24f91", accentDark: "#963061", accentSoft: "#fff0f7" },
+    { accent: "#628b26", accentDark: "#416414", accentSoft: "#f2f9e9" },
   ];
 
   const current = new Date();
@@ -111,24 +119,59 @@
     };
   }
 
-  function createDefaultState(monthValue = currentMonth) {
+  function copyScheduleDefinitions(definitions = DEFAULT_SCHEDULES) {
+    return definitions.map((schedule) => ({ ...schedule, days: [...schedule.days] }));
+  }
+
+  function sanitizedDefinitions(value) {
+    if (!Array.isArray(value)) return copyScheduleDefinitions();
+    const keys = new Set();
+    const result = value.flatMap((schedule, index) => {
+      const key = String(schedule?.key || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 48);
+      const title = String(schedule?.title || "").trim().slice(0, 26);
+      const days = [...new Set(Array.isArray(schedule?.days) ? schedule.days.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6) : [])].sort();
+      if (!key || keys.has(key) || !title || !days.length) return [];
+      keys.add(key);
+      const palette = CUSTOM_COLORS[index % CUSTOM_COLORS.length];
+      const isHex = (color) => /^#[0-9a-f]{6}$/i.test(String(color || ""));
+      return [{
+        key,
+        title,
+        short: String(schedule.short || title.replace(/\s/g, "")).slice(0, 4),
+        days,
+        start: /^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.start) ? schedule.start : "19:00",
+        end: /^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.end) ? schedule.end : "22:00",
+        accent: isHex(schedule.accent) ? schedule.accent : palette.accent,
+        accentDark: isHex(schedule.accentDark) ? schedule.accentDark : palette.accentDark,
+        accentSoft: isHex(schedule.accentSoft) ? schedule.accentSoft : palette.accentSoft,
+        custom: Boolean(schedule.custom),
+      }];
+    });
+    return result.length ? result : copyScheduleDefinitions();
+  }
+
+  function createDefaultState(monthValue = currentMonth, definitions = copyScheduleDefinitions()) {
+    const scheduleDefinitions = copyScheduleDefinitions(definitions);
     return {
       rulesVersion: RULES_VERSION,
       targetMonth: monthValue,
       coachName: "쌍둥이 코치님",
+      coaches: ["쌍둥이 코치님"],
+      confirmedAt: null,
       greeting: "매일 조금씩 성장하는 우리, 코트에서 만나요!",
       noticeOne: "일정은 변동될 수 있으니 레슨 전 미리 확인해주세요.",
       noticeTwo: "예약 및 문의는 코치님께 DM 또는 카카오톡으로 연락주세요.",
       footerMessage: "즐겁게 운동하고, 건강하게 성장해요!",
+      scheduleDefinitions,
       schedules: Object.fromEntries(
-        SCHEDULES.map((schedule) => {
+        scheduleDefinitions.map((schedule) => {
           const dates = defaultScheduleDates(monthValue, schedule);
           return [
             schedule.key,
             {
-            enabled: true,
-            start: schedule.start,
-            end: schedule.end,
+              enabled: true,
+              start: schedule.start,
+              end: schedule.end,
               selected: dates.selected,
               cancelled: dates.cancelled,
             },
@@ -138,52 +181,83 @@
     };
   }
 
+  function normalizeState(parsed) {
+      if (!parsed || !/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(parsed.targetMonth)) throw new Error("일정의 연월 형식이 올바르지 않습니다.");
+      const definitions = sanitizedDefinitions(parsed.scheduleDefinitions);
+      const defaults = createDefaultState(parsed.targetMonth, definitions);
+      const needsRulesMigration = parsed.rulesVersion !== RULES_VERSION;
+      const coaches = [...new Set((Array.isArray(parsed.coaches) ? parsed.coaches : [parsed.coachName])
+        .map((name) => String(name || "").trim().slice(0, 18))
+        .filter(Boolean))];
+      const coachName = String(parsed.coachName || coaches[0] || defaults.coachName).trim().slice(0, 18);
+      if (!coaches.includes(coachName)) coaches.unshift(coachName);
+      return {
+        ...defaults,
+        greeting: String(parsed.greeting ?? defaults.greeting).slice(0, 46),
+        noticeOne: String(parsed.noticeOne ?? defaults.noticeOne).slice(0, 54),
+        noticeTwo: String(parsed.noticeTwo ?? defaults.noticeTwo).slice(0, 54),
+        footerMessage: String(parsed.footerMessage ?? defaults.footerMessage).slice(0, 42),
+        scheduleDefinitions: definitions,
+        coaches: coaches.length ? coaches : defaults.coaches,
+        coachName,
+        confirmedAt: typeof parsed.confirmedAt === "string" && Number.isFinite(Date.parse(parsed.confirmedAt)) ? parsed.confirmedAt : null,
+        rulesVersion: RULES_VERSION,
+        schedules: Object.fromEntries(
+          definitions.map((schedule) => {
+            const item = parsed.schedules?.[schedule.key] || {};
+            const base = defaults.schedules[schedule.key];
+            const [year, month] = parsed.targetMonth.split("-").map(Number);
+            const lastDay = new Date(year, month, 0).getDate();
+            const dates = (value, fallback) => !needsRulesMigration && Array.isArray(value)
+              ? [...new Set(value.filter((day) => Number.isInteger(day) && day >= 1 && day <= lastDay))].sort((a, b) => a - b) : fallback;
+            const selected = dates(item.selected, base.selected);
+            const time = (value, fallback) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : fallback;
+            return [schedule.key, {
+              enabled: typeof item.enabled === "boolean" ? item.enabled : base.enabled,
+              start: time(item.start, base.start), end: time(item.end, base.end), selected,
+              cancelled: dates(item.cancelled, base.cancelled).filter((day) => !selected.includes(day)),
+            }];
+          }),
+        ),
+      };
+  }
+
   function loadState() {
     try {
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (!parsed || !/^\d{4}-\d{2}$/.test(parsed.targetMonth)) return createDefaultState();
-      const defaults = createDefaultState(parsed.targetMonth);
-      const needsRulesMigration = parsed.rulesVersion !== RULES_VERSION;
-      return {
-        ...defaults,
-        ...parsed,
-        rulesVersion: RULES_VERSION,
-        schedules: Object.fromEntries(
-          SCHEDULES.map((schedule) => [
-            schedule.key,
-            {
-              ...defaults.schedules[schedule.key],
-              ...(parsed.schedules && parsed.schedules[schedule.key]),
-              selected: !needsRulesMigration && Array.isArray(parsed.schedules?.[schedule.key]?.selected)
-                ? parsed.schedules[schedule.key].selected.filter(Number.isInteger)
-                : defaults.schedules[schedule.key].selected,
-              cancelled: !needsRulesMigration && Array.isArray(parsed.schedules?.[schedule.key]?.cancelled)
-                ? parsed.schedules[schedule.key].cancelled.filter(Number.isInteger)
-                : defaults.schedules[schedule.key].cancelled,
-            },
-          ]),
-        ),
-      };
+      return normalizeState(parsed);
     } catch (_error) {
       return createDefaultState();
     }
   }
 
   let state = loadState();
-  let openEditorKey = SCHEDULES[0].key;
+  let openEditorKey = state.scheduleDefinitions[0]?.key || "";
   let saveTimer;
   let toastTimer;
+  let access = { readOnly: false, busy: false };
+
+  function editable() { return !access.readOnly && !access.busy && !state.confirmedAt; }
 
   const elements = {
     workspace: document.querySelector(".workspace"),
+    editor: document.querySelector(".editor"),
     targetMonth: document.querySelector("#targetMonth"),
     coachName: document.querySelector("#coachName"),
+    newCoachName: document.querySelector("#newCoachName"),
+    addCoachButton: document.querySelector("#addCoachButton"),
+    removeCoachButton: document.querySelector("#removeCoachButton"),
     greeting: document.querySelector("#greeting"),
     noticeOne: document.querySelector("#noticeOne"),
     noticeTwo: document.querySelector("#noticeTwo"),
     footerMessage: document.querySelector("#footerMessage"),
     holidaySummary: document.querySelector("#holidaySummary"),
     scheduleEditors: document.querySelector("#scheduleEditors"),
+    scheduleCreator: document.querySelector("#scheduleCreator"),
+    toggleScheduleCreatorButton: document.querySelector("#toggleScheduleCreatorButton"),
+    confirmScheduleButton: document.querySelector("#confirmScheduleButton"),
+    confirmTitle: document.querySelector("#confirm-title"),
+    confirmDescription: document.querySelector("#confirmDescription"),
     poster: document.querySelector("#poster"),
     posterFrame: document.querySelector("#posterFrame"),
     previewStage: document.querySelector("#previewStage"),
@@ -191,6 +265,7 @@
     posterMonthNumber: document.querySelector("#posterMonthNumber"),
     posterYear: document.querySelector("#posterYear"),
     posterGreeting: document.querySelector("#posterGreeting"),
+    posterStatusBadge: document.querySelector("#posterStatusBadge"),
     posterSchedules: document.querySelector("#posterSchedules"),
     posterNoticeOne: document.querySelector("#posterNoticeOne"),
     posterNoticeTwo: document.querySelector("#posterNoticeTwo"),
@@ -207,7 +282,7 @@
   }
 
   function scheduleDefinition(key) {
-    return SCHEDULES.find((schedule) => schedule.key === key);
+    return state.scheduleDefinitions.find((schedule) => schedule.key === key);
   }
 
   function getMonthParts() {
@@ -216,12 +291,14 @@
   }
 
   function queueSave() {
+    if (access.readOnly) return;
+    window.dispatchEvent(new CustomEvent("maru:change", { detail: JSON.parse(JSON.stringify(state)) }));
     window.clearTimeout(saveTimer);
     elements.savedState.textContent = "저장 중…";
     saveTimer = window.setTimeout(() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        elements.savedState.textContent = "이 기기에 저장됨";
+        if (!window.MaruCloudUI) elements.savedState.textContent = "이 기기에 저장됨";
       } catch (_error) {
         elements.savedState.textContent = "자동 저장을 사용할 수 없어요";
       }
@@ -238,6 +315,44 @@
   function safeText(value, fallback) {
     const trimmed = String(value || "").trim();
     return trimmed || fallback;
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>'"]/g, (character) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;",
+    })[character]);
+  }
+
+  function renderCoachOptions() {
+    elements.coachName.innerHTML = state.coaches
+      .map((name) => `<option value="${escapeHtml(name)}" ${name === state.coachName ? "selected" : ""}>${escapeHtml(name)}</option>`)
+      .join("");
+    elements.removeCoachButton.disabled = state.coaches.length <= 1;
+  }
+
+  function renderConfirmation() {
+    const isConfirmed = Boolean(state.confirmedAt);
+    const locked = isConfirmed || access.readOnly || access.busy;
+    elements.editor.classList.toggle("is-confirmed", isConfirmed);
+    elements.confirmTitle.textContent = isConfirmed ? "확정된 일정" : "일정 수정 중";
+    elements.confirmDescription.textContent = isConfirmed
+      ? `${new Intl.DateTimeFormat("ko-KR", { dateStyle: "long", timeStyle: "short" }).format(new Date(state.confirmedAt))} 확정 · 수정하려면 잠금을 풀어주세요.`
+      : "날짜를 확인한 뒤 확정해 주세요. 이 기기에 자동 저장됩니다.";
+    elements.confirmScheduleButton.textContent = isConfirmed ? "수정하기" : "이 일정 확정";
+    elements.posterStatusBadge.textContent = isConfirmed ? "✓ 확정 일정" : "수정 중 일정";
+    elements.posterStatusBadge.classList.toggle("is-confirmed", isConfirmed);
+    elements.editor
+      .querySelectorAll(".basics-panel input, .basics-panel select, .basics-panel button, .schedule-editor-section input, .schedule-editor-section button, .notice-panel input, .mobile-reset")
+      .forEach((control) => { control.disabled = locked; });
+    elements.targetMonth.disabled = access.busy;
+    elements.removeCoachButton.disabled = locked || state.coaches.length <= 1;
+    elements.confirmScheduleButton.disabled = access.readOnly || access.busy;
+    document.querySelector("#resetButton").disabled = locked;
+    elements.posterSchedules.querySelectorAll("button").forEach((button) => { button.disabled = locked; });
   }
 
   function calendarCells() {
@@ -284,7 +399,7 @@
 
   function renderScheduleEditors() {
     const holidayMap = holidayMapForMonth();
-    elements.scheduleEditors.innerHTML = SCHEDULES.map((schedule) => {
+    elements.scheduleEditors.innerHTML = state.scheduleDefinitions.map((schedule) => {
       const currentSchedule = state.schedules[schedule.key];
       const isOpen = openEditorKey === schedule.key;
       const defaults = new Set(defaultScheduleDates(state.targetMonth, schedule).selected);
@@ -310,9 +425,9 @@
       return `
         <article class="schedule-editor ${isOpen ? "is-open" : ""} ${currentSchedule.enabled ? "" : "is-disabled"}" style="--accent:${schedule.accent}">
           <button class="schedule-summary" type="button" data-action="toggle-editor" data-key="${schedule.key}" aria-expanded="${isOpen}">
-            <span class="schedule-swatch">${schedule.short}</span>
+            <span class="schedule-swatch">${escapeHtml(schedule.short)}</span>
             <span class="schedule-summary-copy">
-              <strong>${schedule.title}</strong>
+              <strong>${escapeHtml(schedule.title)}</strong>
               <small>${currentSchedule.start} ~ ${currentSchedule.end}</small>
             </span>
             <span class="selected-count">레슨 ${currentSchedule.selected.length} · 휴강 ${currentSchedule.cancelled.length}</span>
@@ -322,9 +437,9 @@
             <div class="schedule-settings-row">
               <div class="time-control">
                 <span class="time-label">레슨 시간</span>
-                <input class="time-input" type="time" value="${currentSchedule.start}" data-action="time" data-field="start" data-key="${schedule.key}" aria-label="${schedule.title} 시작 시간" />
+                 <input class="time-input" type="time" value="${currentSchedule.start}" data-action="time" data-field="start" data-key="${schedule.key}" aria-label="${escapeHtml(schedule.title)} 시작 시간" />
                 <em>~</em>
-                <input class="time-input" type="time" value="${currentSchedule.end}" data-action="time" data-field="end" data-key="${schedule.key}" aria-label="${schedule.title} 종료 시간" />
+                 <input class="time-input" type="time" value="${currentSchedule.end}" data-action="time" data-field="end" data-key="${schedule.key}" aria-label="${escapeHtml(schedule.title)} 종료 시간" />
               </div>
               <div class="enable-control">
                 <label class="switch-label">
@@ -334,6 +449,7 @@
                 </label>
               </div>
             </div>
+            ${schedule.custom ? `<div class="custom-schedule-actions"><span>추가한 일정</span><button class="mini-action mini-action-danger" type="button" data-action="delete-schedule" data-key="${schedule.key}">이 일정 삭제</button></div>` : ""}
             ${ruleDescription ? `<div class="schedule-rule-note"><b>자동 규칙</b><span>${ruleDescription}</span></div>` : ""}
             <div class="date-picker-heading">
               <strong>레슨 날짜 직접 선택</strong>
@@ -352,7 +468,7 @@
               <div class="date-chip-weekdays" aria-hidden="true">
                 ${WEEKDAYS.map((weekday) => `<span>${weekday}</span>`).join("")}
               </div>
-              <div class="date-chip-grid" aria-label="${schedule.title} 날짜 선택">${dateButtons}</div>
+              <div class="date-chip-grid" aria-label="${escapeHtml(schedule.title)} 날짜 선택">${dateButtons}</div>
             </div>
           </div>
         </article>`;
@@ -393,7 +509,7 @@
     elements.posterNoticeTwo.textContent = safeText(state.noticeTwo, "예약 및 문의는 코치님께 연락해주세요.");
     elements.posterFooterMessage.textContent = safeText(state.footerMessage, "오늘도 즐거운 레슨 되세요!");
 
-    const enabledSchedules = SCHEDULES.filter((schedule) => state.schedules[schedule.key].enabled);
+    const enabledSchedules = state.scheduleDefinitions.filter((schedule) => state.schedules[schedule.key]?.enabled);
     elements.posterSchedules.dataset.count = String(enabledSchedules.length);
 
     if (!enabledSchedules.length) {
@@ -414,11 +530,11 @@
             <header class="card-heading">
               <div class="card-title-wrap">
                 <span class="card-kicker">LESSON SCHEDULE</span>
-                <h3>${schedule.title}</h3>
+                 <h3>${escapeHtml(schedule.title)}</h3>
               </div>
               <span class="time-badge">${currentSchedule.start} ~ ${currentSchedule.end}</span>
             </header>
-            <div class="poster-calendar" aria-label="${year}년 ${month}월 ${schedule.title} 달력">
+            <div class="poster-calendar" aria-label="${year}년 ${month}월 ${escapeHtml(schedule.title)} 달력">
               ${posterCalendar(schedule)}
             </div>
             <div class="lesson-summary">
@@ -432,16 +548,19 @@
       .join("");
   }
 
-  function renderAll() {
+  function renderAll(save = true) {
+    renderCoachOptions();
     renderHolidaySummary();
     renderScheduleEditors();
     renderPoster();
-    queueSave();
+    renderConfirmation();
+    if (save) queueSave();
+    window.requestAnimationFrame(resizePoster);
   }
 
   function setInitialFields() {
     elements.targetMonth.value = state.targetMonth;
-    elements.coachName.value = state.coachName;
+    renderCoachOptions();
     elements.greeting.value = state.greeting;
     elements.noticeOne.value = state.noticeOne;
     elements.noticeTwo.value = state.noticeTwo;
@@ -449,7 +568,12 @@
   }
 
   function toggleDate(key, day) {
+    if (!editable()) {
+      showToast("확정 일정을 수정하려면 먼저 '수정하기'를 눌러주세요.");
+      return;
+    }
     const schedule = state.schedules[key];
+    if (!scheduleDefinition(key) || !Number.isInteger(day) || day < 1 || day > getMonthParts().lastDay) return;
     const selected = new Set(schedule.selected);
     const cancelled = new Set(schedule.cancelled);
     if (selected.has(day)) {
@@ -469,9 +593,11 @@
     const button = event.target.closest("[data-action]");
     if (!button) return;
     const { action, key } = button.dataset;
+    if (action !== "toggle-editor" && !editable()) return;
     if (action === "toggle-editor") {
       openEditorKey = openEditorKey === key ? "" : key;
       renderScheduleEditors();
+      renderConfirmation();
     } else if (action === "toggle-date") {
       toggleDate(key, Number(button.dataset.day));
     } else if (action === "reset-dates") {
@@ -484,10 +610,20 @@
       state.schedules[key].selected = [];
       state.schedules[key].cancelled = [];
       renderAll();
+    } else if (action === "delete-schedule") {
+      const definition = scheduleDefinition(key);
+      if (!definition?.custom || !window.confirm(`'${definition.title}' 일정을 삭제할까요?`)) return;
+      state.scheduleDefinitions = state.scheduleDefinitions.filter((schedule) => schedule.key !== key);
+      delete state.schedules[key];
+      openEditorKey = state.scheduleDefinitions[0]?.key || "";
+      renderAll();
+      resizePoster();
+      showToast("추가한 일정을 삭제했어요.");
     }
   });
 
   elements.scheduleEditors.addEventListener("change", (event) => {
+    if (!editable()) return;
     const input = event.target.closest("[data-action]");
     if (!input) return;
     const { action, key } = input.dataset;
@@ -504,8 +640,12 @@
 
   elements.targetMonth.addEventListener("change", () => {
     if (!elements.targetMonth.value) return;
+    if (window.MaruCloudUI) {
+      void window.MaruCloudUI.selectMonth(elements.targetMonth.value);
+      return;
+    }
     state.targetMonth = elements.targetMonth.value;
-    SCHEDULES.forEach((schedule) => {
+    state.scheduleDefinitions.forEach((schedule) => {
       const defaults = defaultScheduleDates(state.targetMonth, schedule);
       state.schedules[schedule.key].selected = defaults.selected;
       state.schedules[schedule.key].cancelled = defaults.cancelled;
@@ -514,12 +654,113 @@
     showToast("새 달의 기본 레슨일을 자동으로 선택했어요.");
   });
 
-  ["coachName", "greeting", "noticeOne", "noticeTwo", "footerMessage"].forEach((field) => {
+  ["greeting", "noticeOne", "noticeTwo", "footerMessage"].forEach((field) => {
     elements[field].addEventListener("input", () => {
+      if (!editable()) return;
       state[field] = elements[field].value;
       renderPoster();
       queueSave();
     });
+  });
+
+  elements.coachName.addEventListener("change", () => {
+    if (!editable()) return;
+    state.coachName = elements.coachName.value;
+    renderPoster();
+    queueSave();
+  });
+
+  elements.addCoachButton.addEventListener("click", () => {
+    if (!editable()) return;
+    const name = elements.newCoachName.value.trim().slice(0, 18);
+    if (!name) {
+      showToast("추가할 코치 이름을 입력해주세요.");
+      elements.newCoachName.focus();
+      return;
+    }
+    if (!state.coaches.includes(name)) state.coaches.push(name);
+    state.coachName = name;
+    elements.newCoachName.value = "";
+    renderAll();
+    showToast(`${name}을(를) 추가했어요.`);
+  });
+
+  elements.newCoachName.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      elements.addCoachButton.click();
+    }
+  });
+
+  elements.removeCoachButton.addEventListener("click", () => {
+    if (!editable()) return;
+    if (state.coaches.length <= 1) return;
+    const removed = state.coachName;
+    state.coaches = state.coaches.filter((name) => name !== removed);
+    state.coachName = state.coaches[0];
+    renderAll();
+    showToast(`${removed}을(를) 목록에서 삭제했어요.`);
+  });
+
+  elements.confirmScheduleButton.addEventListener("click", () => {
+    if (window.MaruCloudUI) { void window.MaruCloudUI.confirm(); return; }
+    if (state.confirmedAt) {
+      state.confirmedAt = null;
+      renderAll();
+      showToast("수정할 수 있도록 일정 잠금을 풀었어요.");
+      return;
+    }
+    state.confirmedAt = new Date().toISOString();
+    renderAll();
+    showToast("현재 레슨 일정을 확정했어요.");
+  });
+
+  elements.toggleScheduleCreatorButton.addEventListener("click", () => {
+    if (!editable()) return;
+    elements.scheduleCreator.hidden = !elements.scheduleCreator.hidden;
+    elements.toggleScheduleCreatorButton.setAttribute("aria-expanded", String(!elements.scheduleCreator.hidden));
+    if (!elements.scheduleCreator.hidden) document.querySelector("#newScheduleTitle").focus();
+  });
+
+  document.querySelector("#cancelScheduleCreatorButton").addEventListener("click", () => {
+    elements.scheduleCreator.hidden = true;
+    elements.toggleScheduleCreatorButton.setAttribute("aria-expanded", "false");
+  });
+
+  elements.scheduleCreator.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!editable()) return;
+    const titleInput = document.querySelector("#newScheduleTitle");
+    const title = titleInput.value.trim().slice(0, 26);
+    const days = Array.from(document.querySelectorAll('input[name="newScheduleDay"]:checked')).map((input) => Number(input.value));
+    if (!title || !days.length) {
+      showToast("일정 이름과 레슨 요일을 선택해주세요.");
+      return;
+    }
+    const palette = CUSTOM_COLORS[state.scheduleDefinitions.length % CUSTOM_COLORS.length];
+    const key = `custom-${Date.now()}`;
+    const definition = {
+      key,
+      title,
+      short: days.map((day) => WEEKDAYS[day]).join("").slice(0, 4),
+      days,
+      start: document.querySelector("#newScheduleStart").value || "19:00",
+      end: document.querySelector("#newScheduleEnd").value || "22:00",
+      ...palette,
+      custom: true,
+    };
+    state.scheduleDefinitions.push(definition);
+    const defaults = defaultScheduleDates(state.targetMonth, definition);
+    state.schedules[key] = { enabled: true, start: definition.start, end: definition.end, ...defaults };
+    openEditorKey = key;
+    event.currentTarget.reset();
+    document.querySelector("#newScheduleStart").value = "19:00";
+    document.querySelector("#newScheduleEnd").value = "22:00";
+    elements.scheduleCreator.hidden = true;
+    elements.toggleScheduleCreatorButton.setAttribute("aria-expanded", "false");
+    renderAll();
+    resizePoster();
+    showToast("새 레슨 일정을 추가했어요.");
   });
 
   document.querySelectorAll("[data-mobile-view]").forEach((button) => {
@@ -538,9 +779,10 @@
   });
 
   function resetState() {
+    if (!editable()) return;
     if (!window.confirm("입력한 내용을 모두 지우고 기본 일정으로 되돌릴까요?")) return;
-    state = createDefaultState();
-    openEditorKey = SCHEDULES[0].key;
+    state = createDefaultState(state.targetMonth);
+    openEditorKey = state.scheduleDefinitions[0]?.key || "";
     setInitialFields();
     renderAll();
     showToast("기본 일정으로 되돌렸어요.");
@@ -554,9 +796,13 @@
     return `${year}년-${Number(month)}월-레슨일정.png`;
   }
 
+  function posterHeight() {
+    return Math.max(1920, Math.ceil(elements.poster.scrollHeight));
+  }
+
   async function createImageDataUrl() {
     if (document.fonts?.ready) await document.fonts.ready;
-    return window.DomExport.renderDataUrl(elements.poster, { width: 1080, height: 1080, scale: 1 });
+    return window.DomExport.renderDataUrl(elements.poster, { width: POSTER_WIDTH, height: posterHeight(), scale: 1 });
   }
 
   async function createImageBlob() {
@@ -610,11 +856,14 @@
     const stageStyle = getComputedStyle(elements.previewStage);
     const horizontalPadding = parseFloat(stageStyle.paddingLeft || 0) + parseFloat(stageStyle.paddingRight || 0);
     const availableWidth = elements.previewStage.clientWidth - horizontalPadding;
-    const scale = Math.min(1, availableWidth / 1080);
+    const height = posterHeight();
+    const scale = Math.min(1, availableWidth / POSTER_WIDTH);
     elements.posterFrame.style.transform = `scale(${scale})`;
-    elements.previewStage.style.height = `${1080 * scale}px`;
-    elements.posterFrame.style.marginRight = `${1080 * (scale - 1)}px`;
-    elements.posterFrame.style.marginBottom = `${1080 * (scale - 1)}px`;
+    elements.posterFrame.style.width = `${POSTER_WIDTH}px`;
+    elements.posterFrame.style.height = `${height}px`;
+    elements.previewStage.style.height = `${height * scale}px`;
+    elements.posterFrame.style.marginRight = `${POSTER_WIDTH * (scale - 1)}px`;
+    elements.posterFrame.style.marginBottom = `${height * (scale - 1)}px`;
   }
 
   if ("ResizeObserver" in window) new ResizeObserver(resizePoster).observe(elements.previewStage);
@@ -643,7 +892,6 @@
         properties: {
           scheduleKey: {
             type: "string",
-            enum: SCHEDULES.map((schedule) => schedule.key),
             description: "변경할 레슨 그룹 식별자",
           },
           dates: {
@@ -667,6 +915,7 @@
       },
       annotations: { readOnlyHint: false, untrustedContentHint: false },
       execute(input) {
+        if (!editable()) throw new Error("현재 일정은 읽기 전용입니다. 관리자 편집 화면에서 수정 잠금을 풀어주세요.");
         const definition = scheduleDefinition(input?.scheduleKey);
         if (!definition) throw new Error("알 수 없는 레슨 그룹입니다.");
         if (!Array.isArray(input.dates)) throw new Error("dates는 날짜 배열이어야 합니다.");
@@ -701,14 +950,14 @@
     register({
       name: "download_lesson_calendar_png",
       title: "레슨 일정 PNG 저장",
-      description: "현재 미리보기를 1080×1080 PNG 파일로 만들어 다운로드합니다.",
+      description: "현재 미리보기를 휴대폰용 세로형 PNG 파일로 만들어 다운로드합니다.",
       inputSchema: { type: "object", properties: {}, additionalProperties: false },
       annotations: { readOnlyHint: false, untrustedContentHint: false },
       async execute() {
         const blob = await createImageBlob();
         const name = fileName();
         window.DomExport.download(blob, name);
-        return { downloaded: true, filename: name, width: 1080, height: 1080 };
+        return { downloaded: true, filename: name, width: POSTER_WIDTH, height: posterHeight() };
       },
     });
 
@@ -716,8 +965,27 @@
   }
 
   hydrateEmbeddedImages();
+  window.MaruCalendar = {
+    getState: () => JSON.parse(JSON.stringify(state)),
+    normalizeState,
+    applyState(value) {
+      window.clearTimeout(saveTimer);
+      state = normalizeState(value);
+      openEditorKey = state.scheduleDefinitions[0]?.key || "";
+      setInitialFields();
+      renderAll(false);
+    },
+    newMonth(month) {
+      return { ...createDefaultState(month, state.scheduleDefinitions),
+        coaches: [...state.coaches], coachName: state.coachName,
+        greeting: state.greeting, noticeOne: state.noticeOne, noticeTwo: state.noticeTwo,
+        footerMessage: state.footerMessage };
+    },
+    setAccess(value) { access = { ...access, ...value }; renderConfirmation(); },
+    showToast,
+  };
   setInitialFields();
-  renderAll();
+  renderAll(false);
   resizePoster();
   registerWebMcpTools();
 })();
