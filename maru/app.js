@@ -6,6 +6,7 @@
   const POSTER_WIDTH = 1080;
   const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
   const controls = window.MaruControls;
+  const coachView = window.MaruCoaches;
   const DATE_MODES = { cycle: "순서대로", selected: "레슨일", cancelled: "휴강일", empty: "지우기" };
   const DEFAULT_SCHEDULES = [
     {
@@ -139,6 +140,7 @@
       return [{
         key,
         title,
+        coachName: coachView.cleanName(schedule.coachName),
         short: String(schedule.short || title.replace(/\s/g, "")).slice(0, 4),
         days,
         start: /^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.start) ? schedule.start : "19:00",
@@ -149,11 +151,13 @@
         custom: Boolean(schedule.custom),
       }];
     });
-    return result.length ? result : copyScheduleDefinitions();
+    return value.length === 0 || result.length ? result : copyScheduleDefinitions();
   }
 
   function createDefaultState(monthValue = currentMonth, definitions = copyScheduleDefinitions()) {
-    const scheduleDefinitions = copyScheduleDefinitions(definitions);
+    const scheduleDefinitions = copyScheduleDefinitions(definitions).map((definition) => ({
+      ...definition, coachName: definition.coachName || "쌍둥이 코치님",
+    }));
     return {
       rulesVersion: RULES_VERSION,
       targetMonth: monthValue,
@@ -191,8 +195,13 @@
       const coaches = [...new Set((Array.isArray(parsed.coaches) ? parsed.coaches : [parsed.coachName])
         .map((name) => String(name || "").trim().slice(0, 18))
         .filter(Boolean))];
-      const coachName = String(parsed.coachName || coaches[0] || defaults.coachName).trim().slice(0, 18);
+      const coachName = coachView.cleanName(parsed.coachName) || coaches[0] || defaults.coachName;
       if (!coaches.includes(coachName)) coaches.unshift(coachName);
+      definitions.forEach((definition) => {
+        // Legacy schedules belong to their previous header coach, never every coach.
+        definition.coachName ||= coachName;
+        if (!coaches.includes(definition.coachName)) coaches.push(definition.coachName);
+      });
       return {
         ...defaults,
         greeting: String(parsed.greeting ?? defaults.greeting).slice(0, 46),
@@ -234,13 +243,18 @@
   }
 
   let state = loadState();
+  let requestedCoach = new URLSearchParams(location.search).get("coach");
+  let activeCoach = coachView.resolve(state, requestedCoach);
+  let exporting = false;
+  let coachTabsHidden = false;
+  const coachTabs = coachView.bindTabs(selectCoach);
   let openEditorKey = state.scheduleDefinitions[0]?.key || "";
   let dateEditMode = "cycle";
   let saveTimer;
   let toastTimer;
   let access = { readOnly: false, busy: false };
 
-  function editable() { return !access.readOnly && !access.busy && !state.confirmedAt; }
+  function editable() { return !access.readOnly && !access.busy && !state.confirmedAt && !exporting; }
 
   const elements = {
     workspace: document.querySelector(".workspace"),
@@ -334,30 +348,47 @@
 
   function renderCoachOptions() {
     elements.coachName.innerHTML = state.coaches
-      .map((name) => `<option value="${escapeHtml(name)}" ${name === state.coachName ? "selected" : ""}>${escapeHtml(name)}</option>`)
+      .map((name) => `<option value="${escapeHtml(name)}" ${name === activeCoach ? "selected" : ""}>${escapeHtml(name)}</option>`)
       .join("");
     elements.removeCoachButton.disabled = state.coaches.length <= 1;
   }
 
+  function coachState() { return coachView.forCoach(state, activeCoach); }
+
+  function renderCoachTabs() {
+    coachTabs.render(state, activeCoach, { disabled: access.busy || exporting, publicOnly: access.readOnly, hidden: coachTabsHidden });
+  }
+
+  function selectCoach(name) {
+    if (access.busy || exporting || !state.coaches.includes(name)) return;
+    requestedCoach = null;
+    activeCoach = name;
+    openEditorKey = coachState().scheduleDefinitions[0]?.key || "";
+    renderAll(false);
+    window.dispatchEvent(new CustomEvent("maru:coach-view", { detail: name }));
+  }
+
   function renderConfirmation() {
     const isConfirmed = Boolean(state.confirmedAt);
-    const locked = isConfirmed || access.readOnly || access.busy;
+    const locked = isConfirmed || access.readOnly || access.busy || exporting;
     elements.editor.classList.toggle("is-confirmed", isConfirmed);
     elements.confirmTitle.textContent = isConfirmed ? "확정된 일정" : "일정 수정 중";
     elements.confirmDescription.textContent = isConfirmed
       ? `${new Intl.DateTimeFormat("ko-KR", { dateStyle: "long", timeStyle: "short" }).format(new Date(state.confirmedAt))} 확정 · 수정하려면 잠금을 풀어주세요.`
-      : "날짜를 확인한 뒤 확정해 주세요. 이 기기에 자동 저장됩니다.";
+      : "이 달의 모든 코치 일정을 함께 확정합니다. 코치별 날짜를 확인해 주세요.";
     elements.confirmScheduleButton.textContent = isConfirmed ? "수정하기" : "이 일정 확정";
     elements.posterStatusBadge.textContent = isConfirmed ? "✓ 확정 일정" : "수정 중 일정";
     elements.posterStatusBadge.classList.toggle("is-confirmed", isConfirmed);
     elements.editor
       .querySelectorAll(".basics-panel input, .basics-panel select, .basics-panel button, .schedule-editor-section input, .schedule-editor-section select, .schedule-editor-section button, .notice-panel input, .mobile-reset")
       .forEach((control) => { control.disabled = locked; });
-    targetMonthPicker.sync(state.targetMonth, access.busy);
+    targetMonthPicker.sync(state.targetMonth, access.busy || exporting);
+    elements.coachName.disabled = access.busy || exporting;
     elements.removeCoachButton.disabled = locked || state.coaches.length <= 1;
-    elements.confirmScheduleButton.disabled = access.readOnly || access.busy;
+    elements.confirmScheduleButton.disabled = access.readOnly || access.busy || exporting;
     document.querySelector("#resetButton").disabled = locked;
     elements.posterSchedules.querySelectorAll("button").forEach((button) => { button.disabled = locked; });
+    renderCoachTabs();
   }
 
   function calendarCells(compact = false) {
@@ -401,7 +432,7 @@
   function renderScheduleEditors() {
     const holidayMap = holidayMapForMonth();
     const { year, month } = getMonthParts();
-    elements.scheduleEditors.innerHTML = state.scheduleDefinitions.map((schedule) => {
+    elements.scheduleEditors.innerHTML = coachState().scheduleDefinitions.map((schedule) => {
       const currentSchedule = state.schedules[schedule.key];
       const isOpen = openEditorKey === schedule.key;
       const defaults = new Set(defaultScheduleDates(state.targetMonth, schedule).selected);
@@ -439,6 +470,10 @@
             <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="schedule-editor-body">
+            <label class="field schedule-owner-field"><span>담당 코치</span>
+              <select data-action="coach-owner" data-key="${schedule.key}" aria-label="${escapeHtml(schedule.title)} 담당 코치">${state.coaches.map((name) => `<option value="${escapeHtml(name)}" ${name === schedule.coachName ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select>
+              <small class="input-help">변경하면 날짜와 시간을 유지한 채 해당 코치 탭으로 옮겨집니다.</small>
+            </label>
             <label class="field schedule-title-field">
               <span>레슨 제목 <small>최대 26자</small></span>
               <input id="schedule-title-${schedule.key}" type="text" maxlength="26" value="${escapeHtml(schedule.title)}" data-action="title" data-key="${schedule.key}" aria-describedby="schedule-title-help-${schedule.key}" />
@@ -480,14 +515,18 @@
             <p class="calendar-footnote"><span>공</span> 공휴일은 기본 휴강으로 표시됩니다.</p>
           </div>
         </article>`;
-    }).join("");
+    }).join("") || `<div class="coach-empty"><span aria-hidden="true">＋</span><strong>${escapeHtml(activeCoach)}의 레슨을 추가해주세요</strong><p>‘일정 추가’를 누르거나, 다른 코치의 레슨에서 ‘담당 코치’를 변경해 옮길 수 있어요.</p></div>`;
   }
 
   function renderPoster() {
-    window.MaruPoster.render(state, { interactive: !access.readOnly });
+    window.MaruPoster.render(coachState(), { interactive: !access.readOnly });
   }
 
   function renderAll(save = true) {
+    activeCoach = coachView.resolve(state, activeCoach);
+    if (!coachState().scheduleDefinitions.some((definition) => definition.key === openEditorKey)) {
+      openEditorKey = coachState().scheduleDefinitions[0]?.key || "";
+    }
     renderCoachOptions();
     renderHolidaySummary();
     renderScheduleEditors();
@@ -618,6 +657,10 @@
       state.schedules[key][field] = next;
       definition[field] = next;
       refreshEditorMetadata(key);
+    } else if (action === "coach-owner" && state.coaches.includes(input.value)) {
+      definition.coachName = input.value;
+      renderAll();
+      showToast(`${input.value} 탭으로 옮겼어요. 날짜와 시간은 그대로 유지됩니다.`);
     } else if (action === "enabled") {
       state.schedules[key].enabled = input.checked;
       renderAll();
@@ -632,7 +675,7 @@
   });
 
   function selectTargetMonth(value) {
-    if (access.busy || !/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(value)) return;
+    if (access.busy || exporting || !/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(value)) return;
     if (window.MaruCloudUI) {
       void window.MaruCloudUI.selectMonth(value);
       return;
@@ -658,10 +701,7 @@
   });
 
   elements.coachName.addEventListener("change", () => {
-    if (!editable()) return;
-    state.coachName = elements.coachName.value;
-    renderPoster();
-    queueSave();
+    selectCoach(elements.coachName.value);
   });
 
   elements.addCoachButton.addEventListener("click", () => {
@@ -672,8 +712,9 @@
       elements.newCoachName.focus();
       return;
     }
-    if (!state.coaches.includes(name)) state.coaches.push(name);
-    state.coachName = name;
+    if (state.coaches.includes(name)) { selectCoach(name); showToast("이미 등록된 코치입니다. 해당 탭으로 이동했어요."); return; }
+    state.coaches.push(name);
+    activeCoach = name;
     elements.newCoachName.value = "";
     renderAll();
     showToast(`${name}을(를) 추가했어요.`);
@@ -689,9 +730,15 @@
   elements.removeCoachButton.addEventListener("click", () => {
     if (!editable()) return;
     if (state.coaches.length <= 1) return;
-    const removed = state.coachName;
+    const removed = activeCoach;
+    if (coachState().scheduleDefinitions.length) {
+      showToast("담당 레슨을 다른 코치로 옮긴 뒤 삭제해주세요.");
+      return;
+    }
+    if (!window.confirm(`'${removed}' 코치를 목록에서 삭제할까요?`)) return;
     state.coaches = state.coaches.filter((name) => name !== removed);
-    state.coachName = state.coaches[0];
+    if (state.coachName === removed) state.coachName = state.coaches[0];
+    activeCoach = state.coaches[0];
     renderAll();
     showToast(`${removed}을(를) 목록에서 삭제했어요.`);
   });
@@ -736,6 +783,7 @@
     const definition = {
       key,
       title,
+      coachName: activeCoach,
       short: days.map((day) => WEEKDAYS[day]).join("").slice(0, 4),
       days,
       start: document.querySelector("#newScheduleStart").value || "19:00",
@@ -786,7 +834,7 @@
 
   function fileName() {
     const [year, month] = state.targetMonth.split("-");
-    return `${year}년-${Number(month)}월-레슨일정.png`;
+    return `${year}년-${Number(month)}월-${coachView.filename(activeCoach)}-레슨일정.png`;
   }
 
   function posterHeight() {
@@ -794,7 +842,11 @@
   }
 
   async function createImageDataUrl() {
-    return window.MaruPoster.imageDataUrl();
+    if (exporting) throw new Error("이미지를 만들고 있습니다.");
+    exporting = true;
+    renderConfirmation();
+    try { return await window.MaruPoster.imageDataUrl(); }
+    finally { exporting = false; renderConfirmation(); }
   }
 
   async function createImageBlob() {
@@ -802,6 +854,7 @@
   }
 
   async function downloadImage(button) {
+    if (exporting) return;
     const originalText = button.innerHTML;
     button.disabled = true;
     button.textContent = "이미지 만드는 중…";
@@ -822,6 +875,7 @@
   document.querySelector("#downloadPreviewButton").addEventListener("click", (event) => downloadImage(event.currentTarget));
 
   document.querySelector("#shareButton").addEventListener("click", async (event) => {
+    if (exporting) return;
     const button = event.currentTarget;
     button.disabled = true;
     try {
@@ -957,10 +1011,14 @@
   });
   window.MaruCalendar = {
     getState: () => JSON.parse(JSON.stringify(state)),
+    getActiveCoach: () => activeCoach,
+    selectCoach,
     normalizeState,
     applyState(value) {
       window.clearTimeout(saveTimer);
       state = normalizeState(value);
+      activeCoach = coachView.resolve(state, requestedCoach || activeCoach);
+      if (state.coaches.includes(requestedCoach)) requestedCoach = null;
       openEditorKey = state.scheduleDefinitions[0]?.key || "";
       setInitialFields();
       renderAll(false);
@@ -972,6 +1030,7 @@
         footerMessage: state.footerMessage };
     },
     setAccess(value) { access = { ...access, ...value }; renderConfirmation(); },
+    setCoachTabsHidden(value) { coachTabsHidden = Boolean(value); renderCoachTabs(); },
     showToast,
   };
   setInitialFields();

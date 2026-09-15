@@ -45,12 +45,15 @@
   function shareUrl() {
     const url = new URL(publicSiteUrl);
     url.searchParams.set("month", month);
+    if ((editMode || hasPublic) && calendar.getState().coaches.length > 1) url.searchParams.set("coach", calendar.getActiveCoach());
     return url.href;
   }
 
   function updateUrl() {
     const url = new URL(location.href);
     url.searchParams.set("month", month);
+    if ((editMode || hasPublic) && calendar.getState().coaches.length > 1) url.searchParams.set("coach", calendar.getActiveCoach());
+    else url.searchParams.delete("coach");
     if (editMode) url.searchParams.set("edit", "1");
     else if (adminSite) url.searchParams.set("edit", "0");
     else url.searchParams.delete("edit");
@@ -81,14 +84,15 @@
     $("adminCloudActions").hidden = !editMode;
     $("publicEmpty").hidden = editMode || hasPublic;
     calendar.setAccess({ readOnly: !editMode, busy });
+    calendar.setCoachTabsHidden(!editMode && !hasPublic);
     for (const id of ["downloadButton", "downloadPreviewButton", "shareButton"]) {
       $(id).disabled = busy || (!editMode && !hasPublic);
     }
     $("confirmScheduleButton").textContent = calendar.getState().confirmedAt ? "수정하기" : "확정 · 공개하기";
     if (editMode && !calendar.getState().confirmedAt) {
       $("confirmDescription").textContent = identity?.admin
-        ? "작업 저장은 관리자만 볼 수 있어요. 확정하면 방문자에게 공개됩니다."
-        : "현재 내용은 이 기기에 저장됩니다. 로그인 후 확정하면 공개할 수 있어요.";
+        ? "작업 저장·확정은 이 달의 모든 코치 일정에 적용됩니다. 확정하면 회원에게 함께 공개됩니다."
+        : "현재 내용은 이 기기에 저장됩니다. 로그인 후 이 달의 모든 코치 일정을 함께 확정·공개할 수 있어요.";
     }
     if (!editMode && hasPublic) {
       $("posterStatusBadge").textContent = "✓ 공개된 확정 일정";
@@ -265,6 +269,7 @@
   }
 
   window.MaruCloudUI = { selectMonth, confirm };
+  window.addEventListener("maru:coach-view", updateUrl);
   window.addEventListener("maru:change", (event) => {
     if (!editMode || !active) return;
     const snapshot = JSON.stringify(event.detail);

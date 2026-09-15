@@ -9,7 +9,7 @@
     />
     <meta name="theme-color" content="#6d39e7" />
     <title>마루 스포츠 · 일정 관리</title>
-    <link rel="stylesheet" href="./styles.css?v=20260915-split1" />
+    <link rel="stylesheet" href="./styles.css?v=20260915-cells1" />
   </head>
   <body data-site-role="admin" data-mode="edit" data-public-ready="false">
     <header class="topbar">
@@ -43,6 +43,11 @@
           <p id="cloudStatus" role="status" aria-live="polite">공개 일정을 불러오는 중…</p>
         </div>
         <button class="button button-ghost" id="modeButton" type="button" hidden>관리자 편집</button>
+      </div>
+      <div class="coach-tabs-panel" id="coachTabsPanel" hidden>
+        <div class="coach-tabs-heading"><strong>코치별 레슨</strong><span id="coachCount"></span><small class="coach-swipe-hint" id="coachSwipeHint">← 좌우로 넘겨보세요 →</small></div>
+        <div class="coach-tabs" id="coachTabs" role="tablist" aria-label="코치별 레슨 일정"></div>
+        <p id="coachTabHint" class="coach-tab-hint"></p>
       </div>
       <div class="cloud-controls">
         <div class="field month-field"><span id="cloudMonthLabel">조회할 연월</span>
@@ -127,7 +132,7 @@
             <label class="field">
               <span>코치 선택</span>
               <div class="select-action-row">
-                <select id="coachName" aria-label="일정에 표시할 코치"></select>
+                <select id="coachName" aria-label="현재 보고 있는 코치"></select>
                 <button class="field-action field-action-danger" id="removeCoachButton" type="button">삭제</button>
               </div>
             </label>
@@ -331,8 +336,9 @@
     <script src="./calendar-storage.js?v=20260913-cloud1"></script>
     <script src="./cloud-client.js?v=20260913-cloud1"></script>
     <script src="./ui-controls.js?v=20260915-editor2"></script>
+    <script src="./coach-view.js?v=20260915-coaches1"></script>
     <script src="./poster-view.js?v=20260915-split1"></script>
-    <script src="./app.js?v=20260915-split1"></script>
-    <script src="./cloud-ui.js?v=20260915-split1"></script>
+    <script src="./app.js?v=20260915-coaches1"></script>
+    <script src="./cloud-ui.js?v=20260915-coaches1"></script>
   </body>
 </html>
