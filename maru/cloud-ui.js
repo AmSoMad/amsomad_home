@@ -3,7 +3,12 @@
   const calendar = window.MaruCalendar;
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(location.search);
-  let editMode = params.get("edit") === "1";
+  const adminSite = document.body.dataset.siteRole === "admin";
+  const publicSiteUrl = "https://marusports.com/";
+  const hostname = location.hostname.toLowerCase().replace(/\.$/, "");
+  // Member-facing UI only. Supabase RLS and the save RPC still enforce authorization.
+  const memberSite = hostname === "marusports.com" || hostname === "www.marusports.com";
+  let editMode = !memberSite && (params.has("edit") ? params.get("edit") === "1" : adminSite);
   const validMonth = (value) => /^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(value || "");
   const originalState = calendar.getState();
   const now = new Date();
@@ -20,6 +25,7 @@
   let operation = 0;
   let active = false;
   let lastSnapshot = "";
+  const cloudMonthPicker = window.MaruControls.bindMonthPicker("cloudMonth", (value) => void selectMonth(value));
   let storage;
   try { storage = window.localStorage; } catch (_) { storage = { getItem: () => null, setItem: () => { throw new Error("storage"); } }; }
   const drafts = window.MaruDraftStore.createStore(storage);
@@ -37,7 +43,7 @@
   function setBusy(value) { busy = value; syncUi(); }
 
   function shareUrl() {
-    const url = new URL("https://amsomad.com/maru/");
+    const url = new URL(publicSiteUrl);
     url.searchParams.set("month", month);
     return url.href;
   }
@@ -45,7 +51,9 @@
   function updateUrl() {
     const url = new URL(location.href);
     url.searchParams.set("month", month);
-    if (editMode) url.searchParams.set("edit", "1"); else url.searchParams.delete("edit");
+    if (editMode) url.searchParams.set("edit", "1");
+    else if (adminSite) url.searchParams.set("edit", "0");
+    else url.searchParams.delete("edit");
     try { history.replaceState(null, "", url); } catch (_) { /* file:// */ }
     $("shareLink").value = shareUrl();
   }
@@ -54,11 +62,11 @@
     document.body.dataset.mode = editMode ? "edit" : "public";
     document.body.dataset.publicReady = String(hasPublic);
     $("cloudTitle").textContent = editMode ? "월별 일정 관리" : "확정 레슨 일정";
-    $("cloudMonth").value = month;
-    $("cloudMonth").disabled = busy;
+    cloudMonthPicker.sync(month, busy);
     $("publishedMonths").disabled = busy;
     $("modeButton").textContent = editMode ? "공개 일정 보기" : "관리자 편집";
-    $("modeButton").disabled = busy;
+    $("modeButton").hidden = memberSite;
+    $("modeButton").disabled = busy || memberSite;
     $("refreshCloudButton").disabled = busy;
     $("authArea").hidden = !editMode;
     $("loginForm").hidden = Boolean(identity?.admin);
@@ -174,7 +182,7 @@
   }
 
   async function loadDraft(explicit = false) {
-    if (!identity?.admin) return;
+    if (!editMode || !identity?.admin) return;
     if (explicit && dirty && !window.confirm("현재 작업본을 백업한 뒤 서버 일정을 불러올까요?")) return;
     setBusy(true);
     status("서버 작업본을 확인하는 중…");
@@ -276,7 +284,7 @@
   $("saveDraftButton").addEventListener("click", () => void save());
   $("loadDraftButton").addEventListener("click", () => void loadDraft(true));
   $("modeButton").addEventListener("click", async () => {
-    if (busy) return;
+    if (busy || memberSite) return;
     if (editMode) remember();
     editMode = !editMode;
     if (editMode) {
@@ -291,7 +299,7 @@
   });
   $("loginForm").addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !editMode) return;
     setBusy(true);
     status("관리자 계정을 확인하는 중…");
     try {

@@ -5,6 +5,8 @@
   const RULES_VERSION = 2;
   const POSTER_WIDTH = 1080;
   const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+  const controls = window.MaruControls;
+  const DATE_MODES = { cycle: "순서대로", selected: "레슨일", cancelled: "휴강일", empty: "지우기" };
   const DEFAULT_SCHEDULES = [
     {
       key: "mwf-evening",
@@ -233,6 +235,7 @@
 
   let state = loadState();
   let openEditorKey = state.scheduleDefinitions[0]?.key || "";
+  let dateEditMode = "cycle";
   let saveTimer;
   let toastTimer;
   let access = { readOnly: false, busy: false };
@@ -273,6 +276,13 @@
     savedState: document.querySelector("#savedState"),
     toast: document.querySelector("#toast"),
   };
+  const targetMonthPicker = controls.bindMonthPicker("targetMonth", selectTargetMonth);
+
+  function renderNewScheduleTimeFields() {
+    document.querySelector("#newScheduleStart").value = "19:00";
+    document.querySelector("#newScheduleEnd").value = "22:00";
+    document.querySelector("#newScheduleTimeFields").innerHTML = controls.timeFields("new", "19:00", "22:00");
+  }
 
   function hydrateEmbeddedImages() {
     if (!window.MARU_LOGO_DATA) return;
@@ -312,11 +322,6 @@
     toastTimer = window.setTimeout(() => elements.toast.classList.remove("is-visible"), 3000);
   }
 
-  function safeText(value, fallback) {
-    const trimmed = String(value || "").trim();
-    return trimmed || fallback;
-  }
-
   function escapeHtml(value) {
     return String(value).replace(/[&<>'"]/g, (character) => ({
       "&": "&amp;",
@@ -346,27 +351,23 @@
     elements.posterStatusBadge.textContent = isConfirmed ? "✓ 확정 일정" : "수정 중 일정";
     elements.posterStatusBadge.classList.toggle("is-confirmed", isConfirmed);
     elements.editor
-      .querySelectorAll(".basics-panel input, .basics-panel select, .basics-panel button, .schedule-editor-section input, .schedule-editor-section button, .notice-panel input, .mobile-reset")
+      .querySelectorAll(".basics-panel input, .basics-panel select, .basics-panel button, .schedule-editor-section input, .schedule-editor-section select, .schedule-editor-section button, .notice-panel input, .mobile-reset")
       .forEach((control) => { control.disabled = locked; });
-    elements.targetMonth.disabled = access.busy;
+    targetMonthPicker.sync(state.targetMonth, access.busy);
     elements.removeCoachButton.disabled = locked || state.coaches.length <= 1;
     elements.confirmScheduleButton.disabled = access.readOnly || access.busy;
     document.querySelector("#resetButton").disabled = locked;
     elements.posterSchedules.querySelectorAll("button").forEach((button) => { button.disabled = locked; });
   }
 
-  function calendarCells() {
+  function calendarCells(compact = false) {
     const { year, month, lastDay } = getMonthParts();
     const firstWeekday = new Date(year, month - 1, 1).getDay();
     const cells = Array(firstWeekday).fill(null);
     for (let day = 1; day <= lastDay; day += 1) cells.push(day);
-    while (cells.length < 42) cells.push(null);
+    const cellCount = compact ? Math.ceil(cells.length / 7) * 7 : 42;
+    while (cells.length < cellCount) cells.push(null);
     return cells;
-  }
-
-  function formatSelectedDates(selected) {
-    if (!selected.length) return "레슨일을 선택해주세요";
-    return selected.slice().sort((a, b) => a - b).join(", ");
   }
 
   function weekdayForDate(day) {
@@ -399,13 +400,14 @@
 
   function renderScheduleEditors() {
     const holidayMap = holidayMapForMonth();
+    const { year, month } = getMonthParts();
     elements.scheduleEditors.innerHTML = state.scheduleDefinitions.map((schedule) => {
       const currentSchedule = state.schedules[schedule.key];
       const isOpen = openEditorKey === schedule.key;
       const defaults = new Set(defaultScheduleDates(state.targetMonth, schedule).selected);
       const selected = new Set(currentSchedule.selected);
       const cancelled = new Set(currentSchedule.cancelled);
-      const dateButtons = calendarCells().map((day) => {
+      const dateButtons = calendarCells(true).map((day) => {
         if (day === null) return '<span class="date-chip-placeholder" aria-hidden="true"></span>';
         const weekday = weekdayForDate(day);
         const holiday = holidayMap.get(day);
@@ -416,9 +418,12 @@
         if (holiday) classes.push("is-holiday");
         if (selected.has(day)) classes.push("is-selected");
         if (cancelled.has(day)) classes.push("is-cancelled");
-        const nextAction = selected.has(day) ? "휴강으로 변경" : cancelled.has(day) ? "표시 지우기" : "레슨일로 선택";
+        const currentState = selected.has(day) ? "레슨일" : cancelled.has(day) ? "휴강일" : "미지정";
+        const nextAction = dateEditMode === "cycle"
+          ? selected.has(day) ? "휴강으로 변경" : cancelled.has(day) ? "표시 지우기" : "레슨일로 선택"
+          : dateEditMode === "selected" ? "레슨일로 선택" : dateEditMode === "cancelled" ? "휴강으로 변경" : "표시 지우기";
         const holidayLabel = holiday ? `, ${holiday.name} 공휴일` : "";
-        return `<button class="${classes.join(" ")}" type="button" data-action="toggle-date" data-key="${schedule.key}" data-day="${day}" aria-label="${day}일 ${WEEKDAYS[weekday]}요일${holidayLabel}, ${nextAction}" ${holiday ? `title="${holiday.name}"` : ""} data-state="${selected.has(day) ? "selected" : cancelled.has(day) ? "cancelled" : "empty"}"><span class="chip-number">${day}</span><small>${WEEKDAYS[weekday]}</small>${holiday ? '<em class="holiday-flag" aria-hidden="true">공</em>' : ""}<b class="chip-x" aria-hidden="true">×</b></button>`;
+        return `<button class="${classes.join(" ")}" type="button" data-action="toggle-date" data-key="${schedule.key}" data-day="${day}" aria-label="${month}월 ${day}일 ${WEEKDAYS[weekday]}요일${escapeHtml(holidayLabel)}, ${currentState}. 누르면 ${nextAction}" ${holiday ? `title="${escapeHtml(holiday.name)}"` : ""} data-state="${selected.has(day) ? "selected" : cancelled.has(day) ? "cancelled" : "empty"}"><span class="chip-day-line"><span class="chip-number">${day}</span><small>${WEEKDAYS[weekday]}</small></span><span class="chip-state" aria-hidden="true">${selected.has(day) ? "✓ 레슨" : cancelled.has(day) ? "× 휴강" : "—"}</span>${holiday ? '<em class="holiday-flag" aria-hidden="true">공</em>' : ""}</button>`;
       }).join("");
       const ruleDescription = scheduleRuleDescription(schedule);
 
@@ -427,19 +432,22 @@
           <button class="schedule-summary" type="button" data-action="toggle-editor" data-key="${schedule.key}" aria-expanded="${isOpen}">
             <span class="schedule-swatch">${escapeHtml(schedule.short)}</span>
             <span class="schedule-summary-copy">
-              <strong>${escapeHtml(schedule.title)}</strong>
-              <small>${currentSchedule.start} ~ ${currentSchedule.end}</small>
+              <strong id="schedule-heading-${schedule.key}">${escapeHtml(schedule.title)}</strong>
+              <small id="schedule-time-${schedule.key}">${currentSchedule.start} ~ ${currentSchedule.end}</small>
             </span>
             <span class="selected-count">레슨 ${currentSchedule.selected.length} · 휴강 ${currentSchedule.cancelled.length}</span>
             <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="schedule-editor-body">
+            <label class="field schedule-title-field">
+              <span>레슨 제목 <small>최대 26자</small></span>
+              <input id="schedule-title-${schedule.key}" type="text" maxlength="26" value="${escapeHtml(schedule.title)}" data-action="title" data-key="${schedule.key}" aria-describedby="schedule-title-help-${schedule.key}" />
+              <small class="input-help" id="schedule-title-help-${schedule.key}">제목을 바꾸면 미리보기에도 반영됩니다.</small>
+            </label>
             <div class="schedule-settings-row">
-              <div class="time-control">
-                <span class="time-label">레슨 시간</span>
-                 <input class="time-input" type="time" value="${currentSchedule.start}" data-action="time" data-field="start" data-key="${schedule.key}" aria-label="${escapeHtml(schedule.title)} 시작 시간" />
-                <em>~</em>
-                 <input class="time-input" type="time" value="${currentSchedule.end}" data-action="time" data-field="end" data-key="${schedule.key}" aria-label="${escapeHtml(schedule.title)} 종료 시간" />
+              <div class="lesson-time-settings">
+                <div class="time-select-row">${controls.timeFields(schedule.key, currentSchedule.start, currentSchedule.end)}</div>
+                <p class="input-help">24시간 기준 · 오후 7시 = 19시</p>
               </div>
               <div class="enable-control">
                 <label class="switch-label">
@@ -452,100 +460,31 @@
             ${schedule.custom ? `<div class="custom-schedule-actions"><span>추가한 일정</span><button class="mini-action mini-action-danger" type="button" data-action="delete-schedule" data-key="${schedule.key}">이 일정 삭제</button></div>` : ""}
             ${ruleDescription ? `<div class="schedule-rule-note"><b>자동 규칙</b><span>${ruleDescription}</span></div>` : ""}
             <div class="date-picker-heading">
-              <strong>레슨 날짜 직접 선택</strong>
+              <strong>날짜 선택</strong>
               <div class="mini-actions">
                 <button class="mini-action" type="button" data-action="reset-dates" data-key="${schedule.key}">기본 규칙</button>
                 <button class="mini-action" type="button" data-action="clear-dates" data-key="${schedule.key}">모두 해제</button>
               </div>
             </div>
-            <div class="date-state-legend" aria-hidden="true">
-              <span><i class="legend-selected">✓</i> 레슨일</span>
-              <span><i class="legend-cancelled">×</i> 휴강일</span>
-              <span><i class="legend-holiday">공</i> 공휴일</span>
-              <small>날짜를 계속 눌러 상태 변경</small>
+            <div class="date-mode-picker" role="group" aria-label="날짜를 누를 때 적용할 표시">
+              ${Object.entries(DATE_MODES).map(([mode, label]) => `<button type="button" data-action="date-mode" data-key="${schedule.key}" data-mode="${mode}" aria-pressed="${mode === dateEditMode}">${label}</button>`).join("")}
             </div>
+            <p class="date-mode-help">${dateEditMode === "cycle" ? "날짜를 누르면 레슨 → × 휴강 → 해제 순서로 바뀝니다." : `날짜를 누르면 ‘${DATE_MODES[dateEditMode]}’ 표시가 적용됩니다.`}</p>
             <div class="date-chip-calendar">
+              <div class="calendar-month-heading"><strong>${year}년 ${month}월</strong><span>레슨 ${selected.size}일 · 휴강 ${cancelled.size}일</span></div>
               <div class="date-chip-weekdays" aria-hidden="true">
                 ${WEEKDAYS.map((weekday) => `<span>${weekday}</span>`).join("")}
               </div>
               <div class="date-chip-grid" aria-label="${escapeHtml(schedule.title)} 날짜 선택">${dateButtons}</div>
             </div>
+            <p class="calendar-footnote"><span>공</span> 공휴일은 기본 휴강으로 표시됩니다.</p>
           </div>
         </article>`;
     }).join("");
   }
 
-  function posterCalendar(schedule) {
-    const selected = new Set(state.schedules[schedule.key].selected);
-    const cancelled = new Set(state.schedules[schedule.key].cancelled);
-    const holidayMap = holidayMapForMonth();
-    const weekdays = WEEKDAYS.map((weekday) => `<span class="poster-weekday">${weekday}</span>`).join("");
-    const dates = calendarCells()
-      .map((day, index) => {
-        if (day === null) return '<span class="poster-date is-empty"></span>';
-        const weekday = index % 7;
-        const holiday = holidayMap.get(day);
-        const classes = ["poster-date"];
-        if (weekday === 0) classes.push("is-sunday");
-        if (weekday === 6) classes.push("is-saturday");
-        if (holiday) classes.push("is-holiday");
-        if (selected.has(day)) classes.push("is-selected");
-        if (cancelled.has(day)) classes.push("is-cancelled");
-        const nextAction = selected.has(day) ? "휴강으로 변경" : cancelled.has(day) ? "표시 지우기" : "레슨일로 선택";
-        return `<button class="${classes.join(" ")}" type="button" data-poster-date="${day}" data-key="${schedule.key}" aria-label="${day}일${holiday ? ` ${holiday.name} 공휴일,` : ","} ${nextAction}" ${holiday ? `title="${holiday.name}"` : ""}><span>${day}</span>${holiday ? '<em class="poster-holiday-mark" aria-hidden="true">공</em>' : ""}${cancelled.has(day) ? '<b aria-hidden="true">×</b>' : ""}</button>`;
-      })
-      .join("");
-    return weekdays + dates;
-  }
-
   function renderPoster() {
-    const { year, month } = getMonthParts();
-    elements.poster.dataset.themeMonth = String(month);
-    elements.posterCoach.textContent = safeText(state.coachName, "배드민턴 코치님");
-    elements.posterMonthNumber.textContent = month;
-    elements.posterYear.textContent = `${year} BADMINTON LESSON`;
-    elements.posterGreeting.textContent = safeText(state.greeting, "코트에서 즐겁게 만나요!");
-    elements.posterNoticeOne.textContent = safeText(state.noticeOne, "레슨 전 일정을 확인해주세요.");
-    elements.posterNoticeTwo.textContent = safeText(state.noticeTwo, "예약 및 문의는 코치님께 연락해주세요.");
-    elements.posterFooterMessage.textContent = safeText(state.footerMessage, "오늘도 즐거운 레슨 되세요!");
-
-    const enabledSchedules = state.scheduleDefinitions.filter((schedule) => state.schedules[schedule.key]?.enabled);
-    elements.posterSchedules.dataset.count = String(enabledSchedules.length);
-
-    if (!enabledSchedules.length) {
-      elements.posterSchedules.innerHTML = `
-        <div class="empty-poster-schedules">
-          <strong>${month}월 레슨 준비 중</strong>
-          <p>표시할 일정을 하나 이상 선택해주세요.</p>
-        </div>`;
-      return;
-    }
-
-    elements.posterSchedules.innerHTML = enabledSchedules
-      .map((schedule) => {
-        const currentSchedule = state.schedules[schedule.key];
-        const hasCancelled = currentSchedule.cancelled.length > 0;
-        return `
-          <section class="poster-schedule-card" style="--accent:${schedule.accent};--accent-dark:${schedule.accentDark};--accent-soft:${schedule.accentSoft}">
-            <header class="card-heading">
-              <div class="card-title-wrap">
-                <span class="card-kicker">LESSON SCHEDULE</span>
-                 <h3>${escapeHtml(schedule.title)}</h3>
-              </div>
-              <span class="time-badge">${currentSchedule.start} ~ ${currentSchedule.end}</span>
-            </header>
-            <div class="poster-calendar" aria-label="${year}년 ${month}월 ${escapeHtml(schedule.title)} 달력">
-              ${posterCalendar(schedule)}
-            </div>
-            <div class="lesson-summary">
-              <span class="lesson-summary-label"><i>✓</i> 레슨 진행일</span>
-              <p class="lesson-days ${currentSchedule.selected.length > 13 ? "is-dense" : ""}">${formatSelectedDates(currentSchedule.selected)}</p>
-              ${hasCancelled ? `<div class="cancelled-summary"><span><i>×</i> 휴강일</span><b>${formatSelectedDates(currentSchedule.cancelled)}</b></div>` : ""}
-              <span class="lesson-count">LESSON ${currentSchedule.selected.length}${hasCancelled ? ` · OFF ${currentSchedule.cancelled.length}` : ""}</span>
-            </div>
-          </section>`;
-      })
-      .join("");
+    window.MaruPoster.render(state, { interactive: !access.readOnly });
   }
 
   function renderAll(save = true) {
@@ -567,7 +506,7 @@
     elements.footerMessage.value = state.footerMessage;
   }
 
-  function toggleDate(key, day) {
+  function toggleDate(key, day, mode = dateEditMode) {
     if (!editable()) {
       showToast("확정 일정을 수정하려면 먼저 '수정하기'를 눌러주세요.");
       return;
@@ -576,7 +515,12 @@
     if (!scheduleDefinition(key) || !Number.isInteger(day) || day < 1 || day > getMonthParts().lastDay) return;
     const selected = new Set(schedule.selected);
     const cancelled = new Set(schedule.cancelled);
-    if (selected.has(day)) {
+    if (mode !== "cycle") {
+      selected.delete(day);
+      cancelled.delete(day);
+      if (mode === "selected") selected.add(day);
+      if (mode === "cancelled") cancelled.add(day);
+    } else if (selected.has(day)) {
       selected.delete(day);
       cancelled.add(day);
     } else if (cancelled.has(day)) {
@@ -589,10 +533,38 @@
     renderAll();
   }
 
+  function refreshEditorMetadata(key) {
+    document.getElementById(`schedule-heading-${key}`).textContent = scheduleDefinition(key).title;
+    document.getElementById(`schedule-time-${key}`).textContent = `${state.schedules[key].start} ~ ${state.schedules[key].end}`;
+    renderPoster();
+    queueSave();
+    window.requestAnimationFrame(resizePoster);
+  }
+
+  function updateScheduleTitle(input) {
+    if (!editable() || input?.dataset.action !== "title") return;
+    const definition = scheduleDefinition(input.dataset.key);
+    if (!definition) return;
+    const title = input.value.trim().slice(0, 26);
+    input.setAttribute("aria-invalid", String(!title));
+    document.getElementById(`schedule-title-help-${definition.key}`).textContent = title
+      ? "제목을 바꾸면 미리보기에도 반영됩니다." : "제목은 비워 둘 수 없어요. 이전 제목이 유지됩니다.";
+    if (!title || title === definition.title) return;
+    definition.title = title;
+    // Do not replace the input while typing: keep its cursor and Korean IME composition.
+    refreshEditorMetadata(definition.key);
+  }
+
+  elements.scheduleEditors.addEventListener("input", (event) => {
+    if (!event.isComposing) updateScheduleTitle(event.target);
+  });
+  elements.scheduleEditors.addEventListener("compositionend", (event) => updateScheduleTitle(event.target));
+
   elements.scheduleEditors.addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
     const { action, key } = button.dataset;
+    if (!scheduleDefinition(key)) return;
     if (action !== "toggle-editor" && !editable()) return;
     if (action === "toggle-editor") {
       openEditorKey = openEditorKey === key ? "" : key;
@@ -600,6 +572,12 @@
       renderConfirmation();
     } else if (action === "toggle-date") {
       toggleDate(key, Number(button.dataset.day));
+      elements.scheduleEditors.querySelector(`[data-action="toggle-date"][data-key="${key}"][data-day="${button.dataset.day}"]`)?.focus({ preventScroll: true });
+    } else if (action === "date-mode" && Object.hasOwn(DATE_MODES, button.dataset.mode)) {
+      dateEditMode = button.dataset.mode;
+      renderScheduleEditors();
+      renderConfirmation();
+      elements.scheduleEditors.querySelector(`[data-action="date-mode"][data-key="${key}"][data-mode="${dateEditMode}"]`)?.focus({ preventScroll: true });
     } else if (action === "reset-dates") {
       const defaults = defaultScheduleDates(state.targetMonth, scheduleDefinition(key));
       state.schedules[key].selected = defaults.selected;
@@ -607,6 +585,7 @@
       renderAll();
       showToast("첫·마지막 주와 공휴일 기본 규칙을 다시 적용했어요.");
     } else if (action === "clear-dates") {
+      if (!window.confirm("이 레슨의 선택 날짜와 휴강 표시를 모두 지울까요?")) return;
       state.schedules[key].selected = [];
       state.schedules[key].cancelled = [];
       renderAll();
@@ -627,24 +606,38 @@
     const input = event.target.closest("[data-action]");
     if (!input) return;
     const { action, key } = input.dataset;
-    if (action === "time") state.schedules[key][input.dataset.field] = input.value;
-    if (action === "enabled") state.schedules[key].enabled = input.checked;
-    renderAll();
+    const definition = scheduleDefinition(key);
+    if (!definition) return;
+    if (action === "title") {
+      updateScheduleTitle(input);
+      if (!input.value.trim()) { input.value = definition.title; input.setAttribute("aria-invalid", "false"); }
+    } else if (action === "time-part" && ["start", "end"].includes(input.dataset.field)) {
+      const field = input.dataset.field;
+      const next = controls.timeFromPart(state.schedules[key][field], input.dataset.part, input.value);
+      if (!next) return;
+      state.schedules[key][field] = next;
+      definition[field] = next;
+      refreshEditorMetadata(key);
+    } else if (action === "enabled") {
+      state.schedules[key].enabled = input.checked;
+      renderAll();
+    }
   });
 
   elements.posterSchedules.addEventListener("click", (event) => {
     const dateButton = event.target.closest("[data-poster-date]");
     if (!dateButton) return;
-    toggleDate(dateButton.dataset.key, Number(dateButton.dataset.posterDate));
+    toggleDate(dateButton.dataset.key, Number(dateButton.dataset.posterDate), "cycle");
+    elements.posterSchedules.querySelector(`[data-key="${dateButton.dataset.key}"][data-poster-date="${dateButton.dataset.posterDate}"]`)?.focus({ preventScroll: true });
   });
 
-  elements.targetMonth.addEventListener("change", () => {
-    if (!elements.targetMonth.value) return;
+  function selectTargetMonth(value) {
+    if (access.busy || !/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(value)) return;
     if (window.MaruCloudUI) {
-      void window.MaruCloudUI.selectMonth(elements.targetMonth.value);
+      void window.MaruCloudUI.selectMonth(value);
       return;
     }
-    state.targetMonth = elements.targetMonth.value;
+    state.targetMonth = value;
     state.scheduleDefinitions.forEach((schedule) => {
       const defaults = defaultScheduleDates(state.targetMonth, schedule);
       state.schedules[schedule.key].selected = defaults.selected;
@@ -652,7 +645,8 @@
     });
     renderAll();
     showToast("새 달의 기본 레슨일을 자동으로 선택했어요.");
-  });
+  }
+  elements.targetMonth.addEventListener("change", () => selectTargetMonth(elements.targetMonth.value));
 
   ["greeting", "noticeOne", "noticeTwo", "footerMessage"].forEach((field) => {
     elements[field].addEventListener("input", () => {
@@ -754,8 +748,7 @@
     state.schedules[key] = { enabled: true, start: definition.start, end: definition.end, ...defaults };
     openEditorKey = key;
     event.currentTarget.reset();
-    document.querySelector("#newScheduleStart").value = "19:00";
-    document.querySelector("#newScheduleEnd").value = "22:00";
+    renderNewScheduleTimeFields();
     elements.scheduleCreator.hidden = true;
     elements.toggleScheduleCreatorButton.setAttribute("aria-expanded", "false");
     renderAll();
@@ -797,12 +790,11 @@
   }
 
   function posterHeight() {
-    return Math.max(1920, Math.ceil(elements.poster.scrollHeight));
+    return window.MaruPoster.height();
   }
 
   async function createImageDataUrl() {
-    if (document.fonts?.ready) await document.fonts.ready;
-    return window.DomExport.renderDataUrl(elements.poster, { width: POSTER_WIDTH, height: posterHeight(), scale: 1 });
+    return window.MaruPoster.imageDataUrl();
   }
 
   async function createImageBlob() {
@@ -852,18 +844,7 @@
   });
 
   function resizePoster() {
-    if (!elements.previewStage.offsetWidth) return;
-    const stageStyle = getComputedStyle(elements.previewStage);
-    const horizontalPadding = parseFloat(stageStyle.paddingLeft || 0) + parseFloat(stageStyle.paddingRight || 0);
-    const availableWidth = elements.previewStage.clientWidth - horizontalPadding;
-    const height = posterHeight();
-    const scale = Math.min(1, availableWidth / POSTER_WIDTH);
-    elements.posterFrame.style.transform = `scale(${scale})`;
-    elements.posterFrame.style.width = `${POSTER_WIDTH}px`;
-    elements.posterFrame.style.height = `${height}px`;
-    elements.previewStage.style.height = `${height * scale}px`;
-    elements.posterFrame.style.marginRight = `${POSTER_WIDTH * (scale - 1)}px`;
-    elements.posterFrame.style.marginBottom = `${height * (scale - 1)}px`;
+    window.MaruPoster.resize();
   }
 
   if ("ResizeObserver" in window) new ResizeObserver(resizePoster).observe(elements.previewStage);
@@ -965,6 +946,15 @@
   }
 
   hydrateEmbeddedImages();
+  renderNewScheduleTimeFields();
+  document.querySelector("#newScheduleTimeFields").addEventListener("change", (event) => {
+    if (!editable()) return;
+    const input = event.target;
+    if (input.dataset.action !== "time-part" || !["start", "end"].includes(input.dataset.field)) return;
+    const target = document.querySelector(input.dataset.field === "start" ? "#newScheduleStart" : "#newScheduleEnd");
+    const next = controls.timeFromPart(target.value, input.dataset.part, input.value);
+    if (next) target.value = next;
+  });
   window.MaruCalendar = {
     getState: () => JSON.parse(JSON.stringify(state)),
     normalizeState,
