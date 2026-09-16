@@ -48,7 +48,10 @@
       render(state, active, options = {}) {
         disabled = Boolean(options.disabled);
         currentNames = state ? names(state) : [];
-        document.getElementById("coachTabsPanel").hidden = !state || Boolean(options.hidden);
+        const tabsPanel = document.getElementById("coachTabsPanel");
+        tabsPanel.hidden = !state || Boolean(options.hidden);
+        const month = Number(state?.targetMonth?.split("-")[1]);
+        tabsPanel.dataset.themeMonth = String(Number.isInteger(month) && month >= 1 && month <= 12 ? month : 9);
         document.getElementById("coachCount").textContent = `${currentNames.length}명`;
         document.getElementById("coachSwipeHint").hidden = currentNames.length <= 1;
         container.innerHTML = currentNames.map((name, index) => {
